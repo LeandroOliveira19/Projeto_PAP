@@ -118,13 +118,16 @@ include 'header.php';
                             foreach ($exercises as $exercise) {
                                 echo "<li class='list-group-item d-flex align-items-center'>";
                                 // Display exercise image
+                                // Changed width and height to 90px
+                                echo "<div class='me-3' style='width: 90px; height: 90px; overflow: hidden; border-radius: 5px;'>";
                                 if ($exercise['image'] && file_exists("assets/img/exercises/" . $exercise['image'])) {
-                                    // Apply the new class here
-                                    echo "<img src='assets/img/exercises/" . htmlspecialchars($exercise['image']) . "' alt='" . htmlspecialchars($exercise['name']) . "' class='exercise-image me-3'>";
+                                    // Added object-position: center;
+                                    echo "<img src='assets/img/exercises/" . htmlspecialchars($exercise['image']) . "' alt='" . htmlspecialchars($exercise['name']) . "' class='img-fluid h-110 w-110 object-fit-cover' style='object-position: center;'>";
                                 } else {
-                                    // Apply the new class here
-                                    echo "<img src='assets/img/exercises/default.jpg' alt='Default Exercise Image' class='exercise-image me-3'>";
+                                    // Added object-position: center;
+                                    echo "<img src='assets/img/exercises/default.jpg' alt='Default Exercise Image' class='img-fluid h-100 w-100 object-fit-cover' style='object-position: center;'>";
                                 }
+                                echo "</div>";
                                 echo htmlspecialchars($exercise['name']);
 
                                 // Display video link if available
