@@ -60,7 +60,7 @@ include 'header.php';
             <?php
             if ($client && $workout_plan) {
                 // Fetch the day-by-day details
-                $stmt = $pdo->prepare("SELECT wpd.day_name, wpd.day_details, do.name AS day_option_name, do.image AS day_option_image, do.image2 AS day_option_image2
+                $stmt = $pdo->prepare("SELECT wpd.day_name, wpd.day_details, do.name AS day_option_name
                                         FROM workout_plan_days wpd
                                         LEFT JOIN day_options do ON wpd.day_option_id = do.id
                                         WHERE wpd.workout_plan_id = ?");
@@ -72,14 +72,6 @@ include 'header.php';
                         echo "<div class='card mb-3'>";
                         echo "<div class='card-body'>";
                         echo "<div class='d-flex align-items-center'>";
-                        // Display the first image
-                        if ($day['day_option_image'] && file_exists("assets/img/day_options/" . $day['day_option_image'])) {
-                            echo "<img src='assets/img/day_options/" . htmlspecialchars($day['day_option_image']) . "' alt='" . htmlspecialchars($day['day_option_name']) . "' class='me-3' style='width: 50px; height: 50px; object-fit: cover;'>";
-                        }
-                        // Display the second image
-                        if ($day['day_option_image2'] && file_exists("assets/img/day_options/" . $day['day_option_image2'])) {
-                            echo "<img src='assets/img/day_options/" . htmlspecialchars($day['day_option_image2']) . "' alt='" . htmlspecialchars($day['day_option_name']) . "' class='me-3' style='width: 50px; height: 50px; object-fit: cover;'>";
-                        }
                         echo "<div>";
                         echo "<h5 class='card-title'>" . htmlspecialchars($day['day_name']) . "</h5>";
                         echo "<p class='card-text'><strong>" . htmlspecialchars($day['day_option_name']) . "</strong></p>";
@@ -111,15 +103,39 @@ include 'header.php';
                 $workout_plan = $stmt->fetch();
 
                 if ($workout_plan) {
+                    // Add the "Observação" title here
+                    echo "<h4>Observação:</h4>";
                     echo "<p>" . nl2br(htmlspecialchars($workout_plan['plan_details'])) . "</p>";
                     echo "<h4>Exercícios:</h4>";
-                    // Fetch and display exercises for this workout plan
-                    $stmt = $pdo->prepare("SELECT e.name FROM workout_plan_exercises wpe JOIN exercises e ON wpe.exercise_id = e.id WHERE wpe.workout_plan_id = ?");
-                    $stmt->execute([$workout_plan['workout_plan_id']]);
-                    $exercises = $stmt->fetchAll();
-                    if (count($exercises) > 0) {
-                        foreach ($exercises as $exercise) {
-                            echo htmlspecialchars($exercise['name']) . "<br>";
+                    // Check if workout_plan_id exists before using it
+                    if (isset($workout_plan['workout_plan_id'])) {
+                        // Fetch and display exercises for this workout plan
+                        $stmt = $pdo->prepare("SELECT e.name, e.video_url, e.image FROM workout_plan_exercises wpe JOIN exercises e ON wpe.exercise_id = e.id WHERE wpe.workout_plan_id = ?");
+                        $stmt->execute([$workout_plan['workout_plan_id']]);
+                        $exercises = $stmt->fetchAll();
+                        if (count($exercises) > 0) {
+                            echo "<ul class='list-group'>";
+                            foreach ($exercises as $exercise) {
+                                echo "<li class='list-group-item d-flex align-items-center'>";
+                                // Display exercise image
+                                if ($exercise['image'] && file_exists("assets/img/exercises/" . $exercise['image'])) {
+                                    // Apply the new class here
+                                    echo "<img src='assets/img/exercises/" . htmlspecialchars($exercise['image']) . "' alt='" . htmlspecialchars($exercise['name']) . "' class='exercise-image me-3'>";
+                                } else {
+                                    // Apply the new class here
+                                    echo "<img src='assets/img/exercises/default.jpg' alt='Default Exercise Image' class='exercise-image me-3'>";
+                                }
+                                echo htmlspecialchars($exercise['name']);
+
+                                // Display video link if available
+                                if ($exercise['video_url']) {
+                                    echo "<a href='" . htmlspecialchars($exercise['video_url']) . "' target='_blank' class='btn btn-sm btn-outline-primary ms-auto'>Ver Vídeo</a>";
+                                }
+                                echo "</li>";
+                            }
+                            echo "</ul>";
+                        } else {
+                            echo "<p>Nenhum exercício cadastrado.</p>";
                         }
                     } else {
                         echo "<p>Nenhum exercício cadastrado.</p>";

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 01-Abr-2025 às 18:33
+-- Tempo de geração: 02-Abr-2025 às 11:48
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.2.12
 
@@ -99,23 +99,21 @@ INSERT INTO `clients` (`id`, `user_id`, `weight`, `height`, `activity_level`) VA
 
 CREATE TABLE `day_options` (
   `id` int(11) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `image` varchar(255) DEFAULT NULL,
-  `image2` varchar(255) DEFAULT NULL
+  `name` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Extraindo dados da tabela `day_options`
 --
 
-INSERT INTO `day_options` (`id`, `name`, `image`, `image2`) VALUES
-(1, 'Peito e Costas', 'chest.jpg', 'back.jpg'),
-(2, 'Pernas e Ombros', 'legs.jpg', 'shoulders.jpg'),
-(3, 'Bíceps e Tríceps', 'biceps.jpg', 'triceps.jpg'),
-(4, 'Cardio', 'cardio.jpg', NULL),
-(5, 'Descanso', 'rest.jpg', NULL),
-(6, 'Corpo Inteiro', 'full_body.jpg', NULL),
-(7, 'Abdominais e Lombar', 'abs.jpg', 'lowerback.jpg');
+INSERT INTO `day_options` (`id`, `name`) VALUES
+(1, 'Peito e Costas'),
+(2, 'Pernas e Ombros'),
+(3, 'Bíceps e Tríceps'),
+(4, 'Cardio'),
+(5, 'Descanso'),
+(6, 'Corpo Inteiro'),
+(7, 'Abdominais e Lombar');
 
 -- --------------------------------------------------------
 
@@ -149,24 +147,26 @@ CREATE TABLE `exercises` (
   `name` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `muscle_group` varchar(255) DEFAULT NULL,
-  `equipment` varchar(255) DEFAULT NULL
+  `equipment` varchar(255) DEFAULT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  `video_url` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Extraindo dados da tabela `exercises`
 --
 
-INSERT INTO `exercises` (`id`, `name`, `description`, `muscle_group`, `equipment`) VALUES
-(1, 'Bench Press', 'Lie on a bench and press a barbell or dumbbells upwards.', 'Chest', 'Barbell, Bench'),
-(2, 'Squats', 'Stand with feet shoulder-width apart and lower your hips as if sitting in a chair.', 'Legs', 'Barbell, Rack'),
-(3, 'Deadlifts', 'Lift a barbell from the floor to a standing position.', 'Back', 'Barbell'),
-(4, 'Push-ups', 'Start in a plank position and lower your body towards the floor.', 'Chest', 'Bodyweight'),
-(5, 'Pull-ups', 'Hang from a bar and pull yourself up until your chin is over the bar.', 'Back', 'Pull-up Bar'),
-(6, 'Overhead Press', 'Stand with feet shoulder-width apart and press a barbell or dumbbells upwards.', 'Shoulders', 'Barbell, Dumbbells'),
-(7, 'Bicep Curls', 'Stand with feet shoulder-width apart and curl a barbell or dumbbells upwards.', 'Biceps', 'Barbell, Dumbbells'),
-(8, 'Tricep Extensions', 'Stand with feet shoulder-width apart and extend a barbell or dumbbells upwards.', 'Triceps', 'Barbell, Dumbbells'),
-(9, 'Lunges', 'Step forward with one leg and lower your hips until both knees are bent at about a 90-degree angle.', 'Legs', 'Bodyweight, Dumbbells'),
-(10, 'Plank', 'Hold a push-up position with your forearms on the ground.', 'Core', 'Bodyweight');
+INSERT INTO `exercises` (`id`, `name`, `description`, `muscle_group`, `equipment`, `image`, `video_url`) VALUES
+(1, 'Bench Press', 'Lie on a bench and press a barbell or dumbbells upwards.', 'Chest', 'Barbell, Bench', NULL, NULL),
+(2, 'Squats', 'Stand with feet shoulder-width apart and lower your hips as if sitting in a chair.', 'Legs', 'Barbell, Rack', NULL, NULL),
+(3, 'Deadlifts', 'Lift a barbell from the floor to a standing position.', 'Back', 'Barbell', NULL, NULL),
+(4, 'Push-ups', 'Start in a plank position and lower your body towards the floor.', 'Chest', 'Bodyweight', NULL, NULL),
+(5, 'Pull-ups', 'Hang from a bar and pull yourself up until your chin is over the bar.', 'Back', 'Pull-up Bar', NULL, NULL),
+(6, 'Overhead Press', 'Stand with feet shoulder-width apart and press a barbell or dumbbells upwards.', 'Shoulders', 'Barbell, Dumbbells', NULL, NULL),
+(7, 'Bicep Curls', 'Stand with feet shoulder-width apart and curl a barbell or dumbbells upwards.', 'Biceps', 'Barbell, Dumbbells', NULL, NULL),
+(8, 'Tricep Extensions', 'Stand with feet shoulder-width apart and extend a barbell or dumbbells upwards.', 'Triceps', 'Barbell, Dumbbells', NULL, NULL),
+(9, 'Lunges', 'Step forward with one leg and lower your hips until both knees are bent at about a 90-degree angle.', 'Legs', 'Bodyweight, Dumbbells', NULL, NULL),
+(10, 'Plank', 'Hold a push-up position with your forearms on the ground.', 'Core', 'Bodyweight', NULL, NULL);
 
 -- --------------------------------------------------------
 
