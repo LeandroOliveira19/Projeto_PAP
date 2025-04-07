@@ -60,7 +60,7 @@ include 'header.php';
             <?php
             if ($client && $workout_plan) {
                 // Fetch the day-by-day details
-                $stmt = $pdo->prepare("SELECT wpd.day_name, wpd.day_details, do.name AS day_option_name
+                $stmt = $pdo->prepare("SELECT wpd.day_name, wpd.day_details, do.name AS day_option_name, wpd.workout_plan_id
                                         FROM workout_plan_days wpd
                                         LEFT JOIN day_options do ON wpd.day_option_id = do.id
                                         WHERE wpd.workout_plan_id = ?");
@@ -71,12 +71,14 @@ include 'header.php';
                     foreach ($workout_plan_days as $day) {
                         echo "<div class='card mb-3'>";
                         echo "<div class='card-body'>";
-                        echo "<div class='d-flex align-items-center'>";
+                        echo "<div class='d-flex align-items-center justify-content-between'>";
                         echo "<div>";
                         echo "<h5 class='card-title'>" . htmlspecialchars($day['day_name']) . "</h5>";
                         echo "<p class='card-text'><strong>" . htmlspecialchars($day['day_option_name']) . "</strong></p>";
                         echo "<p class='card-text'>" . nl2br(htmlspecialchars($day['day_details'])) . "</p>";
                         echo "</div>";
+                        // Add the link to day_exercises.php
+                        echo "<a href='day_exercises.php?day_name=" . urlencode($day['day_name']) . "&workout_plan_id=" . urlencode($day['workout_plan_id']) . "' class='btn btn-primary'>Ver Exercícios</a>";
                         echo "</div>";
                         echo "</div>";
                         echo "</div>";

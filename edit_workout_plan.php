@@ -184,9 +184,12 @@ $day_options = $stmt->fetchAll();
                     $stmt = $pdo->query("SELECT * FROM exercises");
                     $exercises = $stmt->fetchAll();
 
+
+                    // Display all exercises
                     foreach ($exercises as $exercise) {
                         echo "<tr>";
                         echo "<td><input type='checkbox' name='selected_exercises[]' value='" . $exercise['id'] . "'";
+                        // Check if the exercise is selected
                         if (in_array($exercise['id'], $selected_exercises)) {
                             echo " checked";
                         }

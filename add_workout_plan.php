@@ -147,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt = $pdo->query("SELECT * FROM exercises");
                     $exercises = $stmt->fetchAll();
 
+                    // Display all exercises
                     foreach ($exercises as $exercise) {
                         echo "<tr>";
                         echo "<td><input type='checkbox' name='selected_exercises[]' value='" . $exercise['id'] . "'></td>";

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 02-Abr-2025 às 11:48
+-- Tempo de geração: 07-Abr-2025 às 17:30
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.2.12
 
@@ -157,16 +157,53 @@ CREATE TABLE `exercises` (
 --
 
 INSERT INTO `exercises` (`id`, `name`, `description`, `muscle_group`, `equipment`, `image`, `video_url`) VALUES
-(1, 'Bench Press', 'Lie on a bench and press a barbell or dumbbells upwards.', 'Chest', 'Barbell, Bench', NULL, NULL),
-(2, 'Squats', 'Stand with feet shoulder-width apart and lower your hips as if sitting in a chair.', 'Legs', 'Barbell, Rack', NULL, NULL),
-(3, 'Deadlifts', 'Lift a barbell from the floor to a standing position.', 'Back', 'Barbell', NULL, NULL),
-(4, 'Push-ups', 'Start in a plank position and lower your body towards the floor.', 'Chest', 'Bodyweight', NULL, NULL),
-(5, 'Pull-ups', 'Hang from a bar and pull yourself up until your chin is over the bar.', 'Back', 'Pull-up Bar', NULL, NULL),
-(6, 'Overhead Press', 'Stand with feet shoulder-width apart and press a barbell or dumbbells upwards.', 'Shoulders', 'Barbell, Dumbbells', NULL, NULL),
-(7, 'Bicep Curls', 'Stand with feet shoulder-width apart and curl a barbell or dumbbells upwards.', 'Biceps', 'Barbell, Dumbbells', NULL, NULL),
-(8, 'Tricep Extensions', 'Stand with feet shoulder-width apart and extend a barbell or dumbbells upwards.', 'Triceps', 'Barbell, Dumbbells', NULL, NULL),
-(9, 'Lunges', 'Step forward with one leg and lower your hips until both knees are bent at about a 90-degree angle.', 'Legs', 'Bodyweight, Dumbbells', NULL, NULL),
-(10, 'Plank', 'Hold a push-up position with your forearms on the ground.', 'Core', 'Bodyweight', NULL, NULL);
+(1, 'Bench Press', 'Lie on a bench and press a barbell or dumbbells upwards.', 'Chest', 'Barbell, Bench', 'BenchPress.jpg', 'https://www.youtube.com/watch?v=SCVCLChPQFY'),
+(2, 'Squats', 'Stand with feet shoulder-width apart and lower your hips as if sitting in a chair.', 'Legs', 'Barbell, Rack', 'Squats.jpg', 'https://www.youtube.com/watch?v=5YXfqBuDA40'),
+(3, 'Deadlifts', 'Lift a barbell from the floor to a standing position.', 'Back', 'Barbell', 'Deadlifts.jpg', 'https://www.youtube.com/watch?v=op9kVnSso6Q'),
+(4, 'Push-ups', 'Start in a plank position and lower your body towards the floor.', 'Chest', 'Bodyweight', 'Push-ups.jpg', 'https://www.youtube.com/watch?v=_l3ySVKYVJ8'),
+(5, 'Pull-ups', 'Hang from a bar and pull yourself up until your chin is over the bar.', 'Back', 'Pull-up Bar', 'Pull-ups.jpg', 'https://www.youtube.com/watch?v=aAggnpPyR6E'),
+(6, 'Overhead Press', 'Stand with feet shoulder-width apart and press a barbell or dumbbells upwards.', 'Shoulders', 'Barbell, Dumbbells', 'Overhead-Press.jpg', 'https://www.youtube.com/watch?v=AqzDJHxynwo'),
+(7, 'Bicep Curls', 'Stand with feet shoulder-width apart and curl a barbell or dumbbells upwards.', 'Biceps', 'Barbell, Dumbbells', 'Bicep-Curls.jpg', 'https://www.youtube.com/watch?v=Nkl8WnH6tDU'),
+(8, 'Tricep Extensions', 'Stand with feet shoulder-width apart and extend a barbell or dumbbells upwards.', 'Triceps', 'Barbell, Dumbbells', 'Tricep-Extensions.jpg', 'https://www.youtube.com/watch?v=nRiJVZDpdL0'),
+(9, 'Lunges', 'Step forward with one leg and lower your hips until both knees are bent at about a 90-degree angle.', 'Legs', 'Bodyweight, Dumbbells', 'Lunges.jpg', 'https://www.youtube.com/watch?v=ReNofXwy_js'),
+(10, 'Plank', 'Hold a push-up position with your forearms on the ground.', 'Core', 'Bodyweight', 'Plank.jpg', 'https://www.youtube.com/watch?v=sZxrs3C209k'),
+(11, 'Barbell Bench Press - Incline', 'Incline bench press using a barbell.', 'Chest', 'Barbell', 'barbell_bench_press_incline.jpg', 'https://www.youtube.com/watch?v=11gY7Q5D5wo'),
+(12, 'Dumbbell Bench Press - Decline', 'Decline bench press using dumbbells.', 'Chest', 'Dumbbells', 'dumbbell_bench_press_decline.jpg', 'https://www.youtube.com/watch?v=mlXPNdw2Sns'),
+(13, 'Pull-Ups - Wide Grip', 'Pull-ups with a wider grip.', 'Back', 'Pull-Up Bar', 'pull_ups_wide_grip.jpg', 'https://www.youtube.com/watch?v=iywjqUo5nmU'),
+(14, 'Push-Ups - Diamond', 'Push-ups with hands close together in a diamond shape.', 'Chest', 'Bodyweight', 'push_ups_diamond.jpg', 'https://www.youtube.com/watch?v=J0DnG1_S92I'),
+(15, 'Squats - Front', 'Front squats with a barbell.', 'Legs', 'Barbell', 'squats_front.jpg', 'https://www.youtube.com/watch?v=uYumuL_G_V0'),
+(16, 'Deadlift - Romanian', 'Romanian deadlifts with a barbell.', 'Back', 'Barbell', 'deadlift_romanian.jpg', 'https://www.youtube.com/watch?v=2SHsk9AzdjA'),
+(17, 'Overhead Press - Dumbbell', 'Overhead press using dumbbells.', 'Shoulders', 'Dumbbells', 'overhead_press_dumbbell.jpg', 'https://www.youtube.com/watch?v=M2rwvNhTOu0'),
+(18, 'Bicep Curls - Hammer', 'Hammer curls using dumbbells.', 'Biceps', 'Dumbbells', 'bicep_curls_hammer.jpg', 'https://www.youtube.com/watch?v=zC3nLlEvin4'),
+(19, 'Tricep Extensions - Overhead', 'Overhead tricep extensions using a dumbbell.', 'Triceps', 'Dumbbell', 'tricep_extensions_overhead.jpg', 'https://www.youtube.com/watch?v=5crTU1JiMfU'),
+(20, 'Cable Flyes', 'Chest flyes using a cable machine.', 'Chest', 'Cable Machine', 'cable_flyes.jpg', 'https://www.youtube.com/watch?v=PRw7ieDBLl4'),
+(21, 'Lateral Raises', 'Raising dumbbells to the side.', 'Shoulders', 'Dumbbells', 'lateral_raises.jpg', 'https://www.youtube.com/watch?v=3VcKaXpzqRo'),
+(22, 'Leg Press', 'Pressing weight with your legs on a leg press machine.', 'Legs', 'Leg Press Machine', 'leg_press.jpg', 'https://www.youtube.com/watch?v=IZxyjW7MPJQ'),
+(23, 'Leg Extensions', 'Extending your legs against resistance on a leg extension machine.', 'Legs', 'Leg Extension Machine', 'leg_extensions.jpg', 'https://www.youtube.com/watch?v=YyvSfVjQeL0'),
+(24, 'Hamstring Curls', 'Curling your legs against resistance on a hamstring curl machine.', 'Legs', 'Hamstring Curl Machine', 'hamstring_curls.jpg', 'https://www.youtube.com/watch?v=1Tq3QdYUuHs'),
+(25, 'Standing Calf Raises', 'Raising up on your toes to work your calves.', 'Legs', 'Bodyweight', 'Standing_calf_raises.jpg', 'https://www.youtube.com/watch?v=MAMzF7iZNkc'),
+(27, 'Russian Twists', 'Twisting your torso with a weight to work your obliques.', 'Core', 'Dumbbell', 'russian_twists.jpg', 'https://www.youtube.com/watch?v=wkD8rjkodUI'),
+(28, 'Bicycle Crunches', 'Alternating crunches to work your abs.', 'Core', 'Bodyweight', 'bicycle_crunches.jpg', 'https://www.youtube.com/watch?v=eqg47ZuGZXQ'),
+(29, 'Face Pulls', 'Pulling a cable towards your face to work your rear delts.', 'Shoulders', 'Cable Machine', 'face_pulls.jpg', 'https://www.youtube.com/watch?v=V8dZ3pyiCBo'),
+(30, 'Chest Dips', 'Dips to work your chest and triceps.', 'Chest', 'Dip Bars', 'Chest_Dips.jpg', 'https://www.youtube.com/watch?v=dX_nSOOJIsE'),
+(31, 'Lat Pulldowns', 'Pulling down a bar to work your lats.', 'Back', 'Cable Machine', 'lat_Pulldowns.jpg', 'https://www.youtube.com/watch?v=AOpi-p0cJkc'),
+(32, 'Seated Cable Rows', 'Pulling a cable towards your chest while seated.', 'Back', 'Cable Machine', 'seated_cable_rows.jpg', 'https://www.youtube.com/watch?v=GZbfZ033f74'),
+(33, 'Dumbbell Rows', 'Rowing a dumbbell towards your chest.', 'Back', 'Dumbbell', 'dumbbell_rows.jpg', 'https://www.youtube.com/watch?v=pYcpY20QaE8'),
+(34, 'Barbell Rows', 'Rowing a barbell towards your chest.', 'Back', 'Barbell', 'barbell_rows.jpg', 'https://www.youtube.com/watch?v=Nqh7q3zDCoQ'),
+(35, 'Arnold Press', 'A variation of the overhead press that involves rotating the dumbbells.', 'Shoulders', 'Dumbbells', 'arnold_press.jpg', 'https://www.youtube.com/watch?v=3ml7BH7mNwQ'),
+(36, 'Lateral Raises - Cable', 'Lateral raises using a cable machine.', 'Shoulders', 'Cable Machine', 'lateral_raises_cable.jpg', 'https://www.youtube.com/watch?v=f_OGBg2KxgY'),
+(37, 'Front Raises', 'Raising dumbbells to the front.', 'Shoulders', 'Dumbbells', 'Dumbbell_front_raises.jpg', 'https://www.youtube.com/watch?v=-t7fuZ0KhDA'),
+(38, 'Reverse Flyes', 'Reverse flyes using dumbbells.', 'Shoulders', 'Dumbbells', 'Dumbbell_reverse_flyes.jpg', 'https://www.youtube.com/watch?v=evXOlgLTPCw'),
+(39, 'Concentration Curls', 'Bicep curls with a focus on isolation.', 'Biceps', 'Dumbbells', 'concentration_curls.jpg', 'https://www.youtube.com/watch?v=0AUGkch3tzc'),
+(40, 'Preacher Curls', 'Bicep curls using a preacher bench.', 'Biceps', 'Dumbbells', 'preacher_curls.jpg', 'https://www.youtube.com/watch?v=fIWP-FRFNU0'),
+(41, 'Skullcrushers', 'Lying tricep extensions.', 'Triceps', 'Barbell', 'skullcrushers.jpg', 'https://www.youtube.com/watch?v=d_KZxkY_0cM'),
+(42, 'Tricep Pushdowns', 'Pushing down a cable to work your triceps.', 'Triceps', 'Cable Machine', 'tricep_pushdowns.jpg', 'https://www.youtube.com/watch?v=2-LAMcpzODU'),
+(44, 'Glute Bridges', 'Lifting your hips off the ground to work your glutes.', 'Legs', 'Bodyweight', 'glute_bridges.jpg', 'https://www.youtube.com/watch?v=wPM8icPu6H8'),
+(45, 'Hip Thrusts', 'Lifting your hips off the ground with a barbell.', 'Legs', 'Barbell', 'hip_thrusts.jpg', 'https://www.youtube.com/watch?v=SEdqd1n0cvg'),
+(46, 'Good Mornings', 'Bending forward at the hips to work your hamstrings and lower back.', 'Legs', 'Barbell', 'good_mornings.jpg', 'https://www.youtube.com/watch?v=5Xj6XUa77qc'),
+(47, 'Crunches', 'Curling your torso to work your abs.', 'Core', 'Bodyweight', 'crunches.jpg', 'https://www.youtube.com/watch?v=Xyd_fa5zoEU'),
+(48, 'Leg Raises', 'Raising your legs to work your lower abs.', 'Core', 'Bodyweight', 'leg_raises.jpg', 'https://www.youtube.com/watch?v=JB2oyawG9KI'),
+(49, 'Hanging Leg Raises', 'Raising your legs while hanging from a bar.', 'Core', 'Pull-Up Bar', 'hanging_leg_raises.jpg', 'https://www.youtube.com/watch?v=Nw0LOKe3_l8');
 
 -- --------------------------------------------------------
 
@@ -311,7 +348,8 @@ INSERT INTO `workout_plans` (`id`, `client_id`, `trainer_id`, `plan_details`, `c
 (1, 1, 2, 'Treino A: Segunda-feira - Musculação; Quarta-feira - Cardio; Sexta-feira - Funcional.', '2025-02-16 16:00:40', 0),
 (8, 1, 6, 'Dia 1: Aquecimento, Agachamentos, Flexões, Abdominais\r\nDia 2: Aquecimento, Corrida Leve, Alongamentos\r\nDia 3: Descanso\r\nDia 4: Aquecimento, Agachamentos, Flexões, Abdominais\r\nDia 5: Aquecimento, Corrida Leve, Alongamentos\r\nDia 6: Descanso\r\nDia 7: Descanso\r\naaaa', '2025-03-20 15:52:11', 0),
 (9, 2, 6, 'Plano Genérico:\nDia 1: Aquecimento, Agachamentos com Peso, Flexões, Abdominais\nDia 2: Aquecimento, Corrida Intensa, Alongamentos\nDia 3: Descanso\nDia 4: Aquecimento, Agachamentos com Peso, Flexões, Abdominais\nDia 5: Aquecimento, Corrida Intensa, Alongamentos\nDia 6: Descanso\nDia 7: Descanso\n\nDetalhes Personalizados:\naa', '2025-03-20 15:52:40', 0),
-(10, 1, 6, 'precisa de comer muita sopa', '2025-04-01 14:03:11', 1);
+(10, 1, 6, 'precisa de comer muita sopa', '2025-04-01 14:03:11', 1),
+(11, 2, 6, 'Deve beber mais líquidos , já que sente muita sede.', '2025-04-07 10:03:05', 1);
 
 -- --------------------------------------------------------
 
@@ -332,13 +370,20 @@ CREATE TABLE `workout_plan_days` (
 --
 
 INSERT INTO `workout_plan_days` (`id`, `workout_plan_id`, `day_name`, `day_details`, `day_option_id`) VALUES
-(8, 10, 'Dia 1', '', 2),
-(9, 10, 'Dia 2', '', 3),
-(10, 10, 'Dia 3', '', 1),
-(11, 10, 'Dia 4', '', 4),
-(12, 10, 'Dia 5', '', 7),
-(13, 10, 'Dia 6', '', 5),
-(14, 10, 'Dia 7', '', 5);
+(22, 10, 'Dia 1', '', 2),
+(23, 10, 'Dia 2', '', 3),
+(24, 10, 'Dia 3', '', 1),
+(25, 10, 'Dia 4', '', 4),
+(26, 10, 'Dia 5', '', 7),
+(27, 10, 'Dia 6', '', 5),
+(28, 10, 'Dia 7', '', 5),
+(43, 11, 'Dia 1', '', 3),
+(44, 11, 'Dia 2', '', 4),
+(45, 11, 'Dia 3', '', 6),
+(46, 11, 'Dia 4', '', 5),
+(47, 11, 'Dia 5', '', 2),
+(48, 11, 'Dia 6', '', 5),
+(49, 11, 'Dia 7', '', 5);
 
 -- --------------------------------------------------------
 
@@ -367,9 +412,53 @@ INSERT INTO `workout_plan_exercises` (`id`, `workout_plan_id`, `exercise_id`) VA
 (38, 8, 8),
 (39, 8, 9),
 (40, 8, 10),
-(44, 10, 1),
-(45, 10, 2),
-(46, 10, 3);
+(57, 10, 1),
+(58, 10, 2),
+(59, 10, 3),
+(60, 10, 4),
+(61, 10, 5),
+(62, 10, 6),
+(63, 10, 7),
+(64, 10, 8),
+(65, 10, 9),
+(66, 10, 10),
+(106, 11, 11),
+(107, 11, 12),
+(108, 11, 13),
+(109, 11, 14),
+(110, 11, 15),
+(111, 11, 16),
+(112, 11, 17),
+(113, 11, 18),
+(114, 11, 19),
+(115, 11, 20),
+(116, 11, 21),
+(117, 11, 22),
+(118, 11, 23),
+(119, 11, 24),
+(120, 11, 25),
+(122, 11, 27),
+(123, 11, 28),
+(124, 11, 29),
+(125, 11, 30),
+(126, 11, 31),
+(127, 11, 32),
+(128, 11, 33),
+(129, 11, 34),
+(130, 11, 35),
+(131, 11, 36),
+(132, 11, 37),
+(133, 11, 38),
+(134, 11, 39),
+(135, 11, 40),
+(136, 11, 41),
+(137, 11, 42),
+(139, 11, 44),
+(140, 11, 45),
+(141, 11, 46),
+(142, 11, 47),
+(143, 11, 48),
+(144, 11, 49);
 
 --
 -- Índices para tabelas despejadas
@@ -511,7 +600,7 @@ ALTER TABLE `diet_plans`
 -- AUTO_INCREMENT de tabela `exercises`
 --
 ALTER TABLE `exercises`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT de tabela `generic_workout_plans`
@@ -547,19 +636,19 @@ ALTER TABLE `workout_history`
 -- AUTO_INCREMENT de tabela `workout_plans`
 --
 ALTER TABLE `workout_plans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de tabela `workout_plan_days`
 --
 ALTER TABLE `workout_plan_days`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT de tabela `workout_plan_exercises`
 --
 ALTER TABLE `workout_plan_exercises`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=145;
 
 --
 -- Restrições para despejos de tabelas
