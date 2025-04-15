@@ -1,0 +1,121 @@
+/* === Estilos para calendar.css === */
+/* Estilos específicos para FullCalendar e o Modal no tema escuro */
+
+#calendar {
+    /* Altura pode ser ajustada conforme necessário */
+    min-height: 650px; /* Altura mínima para garantir visibilidade */
+    margin-bottom: 30px; /* Espaço abaixo do calendário */
+    width: 100%; /* Ocupa a largura */
+    display: block; /* Garante visibilidade */
+}
+
+.fc { /* Classe principal do FullCalendar */
+    color: var(--text-light); /* Cor do texto geral */
+}
+
+.fc .fc-toolbar-title { /* Título (Mês/Semana) */
+    color: var(--text-light);
+    font-size: 1.6em;
+}
+
+.fc .fc-button-primary { /* Botões principais (prev, next, today) */
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+
+.fc .fc-button-primary:hover {
+    background-color: var(--accent-color-hover);
+    border-color: var(--accent-color-hover);
+}
+
+.fc .fc-button-primary:disabled {
+     background-color: var(--border-color);
+     border-color: var(--border-color);
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active { /* Botão ativo (view) */
+     background-color: var(--accent-color-hover);
+     border-color: var(--accent-color-hover);
+}
+
+.fc-daygrid-day, .fc-timegrid-slot { /* Células do dia/hora */
+    border-color: var(--border-color) !important; /* Força a cor da borda */
+}
+
+.fc-day-today { /* Dia atual */
+    background-color: rgba(123, 75, 255, 0.1) !important; /* Fundo suave do accent */
+}
+
+.fc-event { /* Eventos (aulas) */
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+    padding: 3px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease; /* Adiciona transição suave */
+}
+
+.fc-event:hover {
+    background-color: var(--accent-color-hover);
+}
+
+.fc-event-main {
+    font-size: 0.9em;
+    font-weight: 500; /* Deixa o texto do evento um pouco mais forte */
+}
+
+.fc-list-day-cushion, .fc-list-table td { /* Estilos para a view de lista */
+     background-color: var(--bg-dark-secondary);
+     border-color: var(--border-color) !important;
+}
+
+.fc-list-event-dot {
+     border-color: var(--accent-color) !important;
+}
+
+/* Estilo para o Modal no tema escuro */
+.modal-content {
+    background-color: var(--bg-dark-secondary);
+    color: var(--text-light);
+    border: 1px solid var(--border-color);
+    border-radius: 12px; /* Arredondar cantos do modal */
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%); /* Deixa o botão 'X' branco */
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    /* Alinha botões no modal footer (opcional) */
+    /* display: flex;
+    justify-content: flex-end; */
+}
+
+.modal-body strong {
+    color: var(--text-light); /* Destaca labels no modal */
+}
+
+.modal-body .badge {
+    font-size: 0.9em;
+    padding: 0.4em 0.7em; /* Ajusta padding do badge */
+}
+
+/* Ajuste para botões dentro do modal footer */
+#modalFooterActions .btn {
+    margin-left: 10px; /* Adiciona espaço entre botões no footer */
+}
+#modalFooterActions .btn.w-100 { /* Se usar w-100, remove margem esquerda e adiciona margem superior */
+    margin-left: 0;
+    margin-top: 10px;
+}
+#modalFooterActions .btn.w-100:first-child {
+    margin-top: 0; /* Remove margem superior do primeiro botão w-100 */
+}

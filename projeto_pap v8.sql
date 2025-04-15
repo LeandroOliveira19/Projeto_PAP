@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 07-Abr-2025 às 17:30
+-- Tempo de geração: 15-Abr-2025 às 13:07
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.2.12
 
@@ -43,7 +43,10 @@ CREATE TABLE `classes` (
 
 INSERT INTO `classes` (`id`, `name`, `description`, `trainer_id`, `schedule`, `duration`, `max_participants`) VALUES
 (1, 'Yoga', 'Aula de yoga para iniciantes e avançados.', 2, '2025-03-01 10:00:00', 60, 20),
-(2, 'Cycling', 'Treino com alta intensidade sem colocar stress extra nas suas articulações e ossos Esta atividade é essencialmente cardiovascular, podendo alterar o seu nível de resistência consoante a sua capacidade física.', 2, '2025-03-02 18:00:00', 90, 25);
+(2, 'Cycling', 'Treino com alta intensidade sem colocar stress extra nas suas articulações e ossos Esta atividade é essencialmente cardiovascular, podendo alterar o seu nível de resistência consoante a sua capacidade física.', 2, '2025-03-02 18:00:00', 90, 25),
+(3, 'Pilates', 'Pilates é uma forma de exercício, desenvolvido por Joseph Pilates, que enfatiza o desenvolvimento equilibrado do corpo através dos núcleos força, flexibilidade e consciência, a fim de apoiar movimentos graciosos e eficientes.', 2, '2025-04-10 17:00:00', 60, 25),
+(4, 'Yoga', 'Aula de yoga para iniciantes e avançados.', 6, '2025-04-11 16:00:00', 60, 1),
+(5, 'Yoga', 'asassasasas', 2, '2025-04-12 17:10:00', 40, 2);
 
 -- --------------------------------------------------------
 
@@ -230,6 +233,32 @@ INSERT INTO `generic_workout_plans` (`id`, `name`, `description`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Estrutura da tabela `messages`
+--
+
+CREATE TABLE `messages` (
+  `id` int(11) NOT NULL,
+  `sender_id` int(11) NOT NULL,
+  `receiver_id` int(11) NOT NULL,
+  `message` text NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT current_timestamp(),
+  `is_read` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `messages`
+--
+
+INSERT INTO `messages` (`id`, `sender_id`, `receiver_id`, `message`, `timestamp`, `is_read`) VALUES
+(1, 4, 6, 'ola , tenho uma duvida!', '2025-04-14 10:42:14', 0),
+(2, 6, 4, 'ola!! ,', '2025-04-14 10:46:07', 0),
+(3, 6, 4, 'qual a sua duvida?', '2025-04-14 10:46:13', 0),
+(4, 22, 2, 'Ola Maria!!', '2025-04-14 10:52:10', 0),
+(5, 2, 22, 'saudações Arbusto!!', '2025-04-14 10:53:16', 0);
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura da tabela `recipes`
 --
 
@@ -288,6 +317,8 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `role` enum('client','trainer','nutritionist','admin') NOT NULL,
   `token` varchar(255) DEFAULT NULL,
+  `reset_token` varchar(255) DEFAULT NULL,
+  `reset_token_expires_at` datetime DEFAULT NULL,
   `first_login` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -296,21 +327,21 @@ CREATE TABLE `users` (
 -- Extraindo dados da tabela `users`
 --
 
-INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `token`, `first_login`, `created_at`) VALUES
-(1, 'João Silva', 'joao@gmail.com', '$2y$10$lh.W5KbiZP/pR26lenTsaO/B5fR542orbtAlxfaWk/y16UgrPsIp2', 'client', NULL, 0, '2025-02-16 16:00:40'),
-(2, 'Maria Souza', 'maria@gmail.com', '6b08d780140e292a4af8ba3f2333fc1357091442d7e807c6cad92e8dcd0240b7', 'trainer', NULL, 1, '2025-02-16 16:00:40'),
-(3, 'Carlos Oliveira', 'carlos@gmail.com', 'b578dc5fcbfabbc7e96400601d0858c951f04929faef033bbbc117ab935c6ae9', 'nutritionist', NULL, 1, '2025-02-16 16:00:40'),
-(4, 'Nelo', 'Nelo@gmail.com', '$2y$10$Ya4lZjtt5aMJi1nZm9VW4O9quz16SDR5okERVFHVfSLOgbIisYAwC', 'client', NULL, 0, '2025-02-16 16:42:55'),
-(6, 'Claudia ', 'claudia@gmail.com', '$2y$10$QrMlKOAR98ERl97o/rMoIenm5r7q0dGmnRa1WzQir5kHS.h6e0Mn2', 'trainer', NULL, 0, '2025-02-16 17:27:51'),
-(7, 'Silvia', 'silvia@gmail.com', 'silvia123', 'nutritionist', NULL, 1, '2025-02-16 17:27:51'),
-(8, 'claudio', 'claudio@gmail.com', 'claudio123', 'trainer', NULL, 1, '2025-02-16 17:57:51'),
-(10, 'Personal Trainer', 'trainer@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'trainer', NULL, 1, '2025-02-16 18:23:39'),
-(11, 'Nutricionista', 'nutritionist@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'nutritionist', NULL, 1, '2025-02-16 18:23:39'),
-(12, 'leandro', 'leandro@gmail.com', '$2y$10$2Hn16xy2XOlFAFvi37sQ3uPRSb.icWRJ1/iQPAdKtwg15Deh.TbgK', 'admin', NULL, 0, '2025-02-22 10:30:35'),
-(16, 'Fabio', 'fabio.oliveira.1719@gmail.com', '$2y$10$kfsBwjbI1oyZRutY0rjXNOVAeYINuqInUr0eyEgtjfB4dNez/8D4S', 'client', '8f87cb65849c9b33b7a2b0a5f5849040f974bfd7335d8fe398d55ca847619b03864f276127ce05b47702f526ae36520f9506', 1, '2025-03-15 14:11:35'),
-(21, 'Marcelo', '2mapo.01.01.2007@gmail.com', '$2y$10$0QvpZM6lpJ3kKRFWU39E1O/tP4xbnnX8CT8oD6Jny7QOszZicpWfK', 'client', '1adb618811d0ad173cf0727a40561dfac3bda92241e5ebcf5fc924d01bfeb8cf6829d153d70dafb90dffd59ff2b7928da9b6', 1, '2025-03-15 14:53:00'),
-(22, 'Arbusto', 'arbustosr116@gmail.com', '$2y$10$msl0AcXBrpFVOKSU7gVeg.hkpuqmUTYrw/VZxniRz9WyNvkqgn2qK', 'client', NULL, 0, '2025-03-15 14:55:43'),
-(23, 'Leonardo', 'leofsgomes.2007@gmail.com', '$2y$10$/UlDkdcXgPXOmtFHqE5e2OzsVyY5wk2np9Yvtw1Yyzj37f475jN5u', 'client', 'af6410bd5e87419eddb0bb9f789cbb9ad5cf69ce0d7f2dbf66d6650d83b52a48ec6361fa8870d069dd72f970a75aba99a537', 1, '2025-03-20 14:39:26');
+INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `token`, `reset_token`, `reset_token_expires_at`, `first_login`, `created_at`) VALUES
+(1, 'João Silva', 'joao@gmail.com', '$2y$10$lh.W5KbiZP/pR26lenTsaO/B5fR542orbtAlxfaWk/y16UgrPsIp2', 'client', NULL, NULL, NULL, 0, '2025-02-16 16:00:40'),
+(2, 'Maria Souza', 'maria@gmail.com', '$2y$10$463JYEX113pg5x1.aUaMd.1nIjnnHxZJ/ziE5o18bXJ3Do2HmTeyy', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 16:00:40'),
+(3, 'Carlos Oliveira', 'carlos@gmail.com', 'b578dc5fcbfabbc7e96400601d0858c951f04929faef033bbbc117ab935c6ae9', 'nutritionist', NULL, NULL, NULL, 1, '2025-02-16 16:00:40'),
+(4, 'Nelo', 'Nelo@gmail.com', '$2y$10$Ya4lZjtt5aMJi1nZm9VW4O9quz16SDR5okERVFHVfSLOgbIisYAwC', 'client', NULL, NULL, NULL, 0, '2025-02-16 16:42:55'),
+(6, 'Claudia ', 'claudia@gmail.com', '$2y$10$QrMlKOAR98ERl97o/rMoIenm5r7q0dGmnRa1WzQir5kHS.h6e0Mn2', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 17:27:51'),
+(7, 'Silvia', 'silvia@gmail.com', 'silvia123', 'nutritionist', NULL, NULL, NULL, 1, '2025-02-16 17:27:51'),
+(8, 'claudio', 'claudio@gmail.com', 'claudio123', 'trainer', NULL, NULL, NULL, 1, '2025-02-16 17:57:51'),
+(10, 'Personal Trainer', 'trainer@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'trainer', NULL, NULL, NULL, 1, '2025-02-16 18:23:39'),
+(11, 'Nutricionista', 'nutritionist@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'nutritionist', NULL, NULL, NULL, 1, '2025-02-16 18:23:39'),
+(12, 'leandro', 'l2androliveir3@gmail.com', '$2y$10$GQ/F52GETp2VA3dYEKb55ODsmdzlz0Ue8oLVNdq5db7YklBEg/Hlq', 'admin', NULL, NULL, NULL, 0, '2025-02-22 10:30:35'),
+(16, 'Fabio', 'fabio.oliveira.1719@gmail.com', '$2y$10$kfsBwjbI1oyZRutY0rjXNOVAeYINuqInUr0eyEgtjfB4dNez/8D4S', 'client', '8f87cb65849c9b33b7a2b0a5f5849040f974bfd7335d8fe398d55ca847619b03864f276127ce05b47702f526ae36520f9506', NULL, NULL, 1, '2025-03-15 14:11:35'),
+(21, 'Marcelo', '2mapo.01.01.2007@gmail.com', '$2y$10$0QvpZM6lpJ3kKRFWU39E1O/tP4xbnnX8CT8oD6Jny7QOszZicpWfK', 'client', '1adb618811d0ad173cf0727a40561dfac3bda92241e5ebcf5fc924d01bfeb8cf6829d153d70dafb90dffd59ff2b7928da9b6', NULL, NULL, 1, '2025-03-15 14:53:00'),
+(22, 'Arbusto', 'arbustosr116@gmail.com', '$2y$10$msl0AcXBrpFVOKSU7gVeg.hkpuqmUTYrw/VZxniRz9WyNvkqgn2qK', 'client', NULL, NULL, NULL, 0, '2025-03-15 14:55:43'),
+(23, 'Leonardo', 'leofsgomes.2007@gmail.com', '$2y$10$/UlDkdcXgPXOmtFHqE5e2OzsVyY5wk2np9Yvtw1Yyzj37f475jN5u', 'client', 'af6410bd5e87419eddb0bb9f789cbb9ad5cf69ce0d7f2dbf66d6650d83b52a48ec6361fa8870d069dd72f970a75aba99a537', NULL, NULL, 1, '2025-03-20 14:39:26');
 
 -- --------------------------------------------------------
 
@@ -348,8 +379,10 @@ INSERT INTO `workout_plans` (`id`, `client_id`, `trainer_id`, `plan_details`, `c
 (1, 1, 2, 'Treino A: Segunda-feira - Musculação; Quarta-feira - Cardio; Sexta-feira - Funcional.', '2025-02-16 16:00:40', 0),
 (8, 1, 6, 'Dia 1: Aquecimento, Agachamentos, Flexões, Abdominais\r\nDia 2: Aquecimento, Corrida Leve, Alongamentos\r\nDia 3: Descanso\r\nDia 4: Aquecimento, Agachamentos, Flexões, Abdominais\r\nDia 5: Aquecimento, Corrida Leve, Alongamentos\r\nDia 6: Descanso\r\nDia 7: Descanso\r\naaaa', '2025-03-20 15:52:11', 0),
 (9, 2, 6, 'Plano Genérico:\nDia 1: Aquecimento, Agachamentos com Peso, Flexões, Abdominais\nDia 2: Aquecimento, Corrida Intensa, Alongamentos\nDia 3: Descanso\nDia 4: Aquecimento, Agachamentos com Peso, Flexões, Abdominais\nDia 5: Aquecimento, Corrida Intensa, Alongamentos\nDia 6: Descanso\nDia 7: Descanso\n\nDetalhes Personalizados:\naa', '2025-03-20 15:52:40', 0),
-(10, 1, 6, 'precisa de comer muita sopa', '2025-04-01 14:03:11', 1),
-(11, 2, 6, 'Deve beber mais líquidos , já que sente muita sede.', '2025-04-07 10:03:05', 1);
+(10, 1, 6, 'precisa de comer muita sopa', '2025-04-01 14:03:11', 0),
+(11, 2, 6, 'Deve beber mais líquidos , já que sente muita sede.', '2025-04-07 10:03:05', 1),
+(12, 1, 6, '', '2025-04-14 10:28:20', 1),
+(13, 5, 2, 'deverá deixar de camperar', '2025-04-14 10:51:27', 1);
 
 -- --------------------------------------------------------
 
@@ -370,20 +403,34 @@ CREATE TABLE `workout_plan_days` (
 --
 
 INSERT INTO `workout_plan_days` (`id`, `workout_plan_id`, `day_name`, `day_details`, `day_option_id`) VALUES
-(22, 10, 'Dia 1', '', 2),
-(23, 10, 'Dia 2', '', 3),
-(24, 10, 'Dia 3', '', 1),
-(25, 10, 'Dia 4', '', 4),
-(26, 10, 'Dia 5', '', 7),
-(27, 10, 'Dia 6', '', 5),
-(28, 10, 'Dia 7', '', 5),
-(43, 11, 'Dia 1', '', 3),
-(44, 11, 'Dia 2', '', 4),
-(45, 11, 'Dia 3', '', 6),
-(46, 11, 'Dia 4', '', 5),
-(47, 11, 'Dia 5', '', 2),
-(48, 11, 'Dia 6', '', 5),
-(49, 11, 'Dia 7', '', 5);
+(22, 10, 'Dia 1', NULL, 2),
+(23, 10, 'Dia 2', NULL, 3),
+(24, 10, 'Dia 3', NULL, 1),
+(25, 10, 'Dia 4', NULL, 4),
+(26, 10, 'Dia 5', NULL, 7),
+(27, 10, 'Dia 6', NULL, 5),
+(28, 10, 'Dia 7', NULL, 5),
+(43, 11, 'Dia 1', NULL, 3),
+(44, 11, 'Dia 2', NULL, 4),
+(45, 11, 'Dia 3', NULL, 6),
+(46, 11, 'Dia 4', NULL, 5),
+(47, 11, 'Dia 5', NULL, 2),
+(48, 11, 'Dia 6', NULL, 5),
+(49, 11, 'Dia 7', NULL, 5),
+(50, 12, 'Dia 1', '', 1),
+(51, 12, 'Dia 2', '', 1),
+(52, 12, 'Dia 3', '', 1),
+(53, 12, 'Dia 4', '', 1),
+(54, 12, 'Dia 5', '', 1),
+(55, 12, 'Dia 6', '', 1),
+(56, 12, 'Dia 7', '', 1),
+(57, 13, 'Dia 1', '', 4),
+(58, 13, 'Dia 2', '', 3),
+(59, 13, 'Dia 3', '', 2),
+(60, 13, 'Dia 4', '', 1),
+(61, 13, 'Dia 5', '', 6),
+(62, 13, 'Dia 6', '', 5),
+(63, 13, 'Dia 7', '', 5);
 
 -- --------------------------------------------------------
 
@@ -458,7 +505,12 @@ INSERT INTO `workout_plan_exercises` (`id`, `workout_plan_id`, `exercise_id`) VA
 (141, 11, 46),
 (142, 11, 47),
 (143, 11, 48),
-(144, 11, 49);
+(144, 11, 49),
+(145, 13, 1),
+(146, 13, 2),
+(147, 13, 3),
+(148, 13, 4),
+(149, 13, 5);
 
 --
 -- Índices para tabelas despejadas
@@ -511,6 +563,15 @@ ALTER TABLE `exercises`
 --
 ALTER TABLE `generic_workout_plans`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Índices para tabela `messages`
+--
+ALTER TABLE `messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_message_sender` (`sender_id`),
+  ADD KEY `idx_message_receiver` (`receiver_id`),
+  ADD KEY `idx_message_conversation` (`sender_id`,`receiver_id`);
 
 --
 -- Índices para tabela `recipes`
@@ -570,7 +631,7 @@ ALTER TABLE `workout_plan_exercises`
 -- AUTO_INCREMENT de tabela `classes`
 --
 ALTER TABLE `classes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de tabela `class_participants`
@@ -609,6 +670,12 @@ ALTER TABLE `generic_workout_plans`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
+-- AUTO_INCREMENT de tabela `messages`
+--
+ALTER TABLE `messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
 -- AUTO_INCREMENT de tabela `recipes`
 --
 ALTER TABLE `recipes`
@@ -636,19 +703,19 @@ ALTER TABLE `workout_history`
 -- AUTO_INCREMENT de tabela `workout_plans`
 --
 ALTER TABLE `workout_plans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT de tabela `workout_plan_days`
 --
 ALTER TABLE `workout_plan_days`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
 
 --
 -- AUTO_INCREMENT de tabela `workout_plan_exercises`
 --
 ALTER TABLE `workout_plan_exercises`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=145;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
 
 --
 -- Restrições para despejos de tabelas
@@ -665,7 +732,9 @@ ALTER TABLE `classes`
 --
 ALTER TABLE `class_participants`
   ADD CONSTRAINT `class_participants_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `class_participants_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `class_participants_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_class_id` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Limitadores para a tabela `clients`
@@ -679,6 +748,13 @@ ALTER TABLE `clients`
 ALTER TABLE `diet_plans`
   ADD CONSTRAINT `diet_plans_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `diet_plans_ibfk_2` FOREIGN KEY (`nutritionist_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Limitadores para a tabela `messages`
+--
+ALTER TABLE `messages`
+  ADD CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Limitadores para a tabela `workout_history`

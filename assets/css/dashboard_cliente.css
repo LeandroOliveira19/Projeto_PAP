@@ -1,0 +1,464 @@
+/* === Estilos para dashboard_cliente.css === */
+/* Inspirado em: https://dribbble.com/shots/22965167-Lionel-Gym-Dashboard-Saas-App */
+
+:root {
+    --bg-dark-primary: #161925;
+    /* Fundo principal mais escuro */
+    --bg-dark-secondary: #232A44;
+    /* Fundo para cards/sidebar */
+    --text-light: #EAEAEA;
+    /* Texto principal claro */
+    --text-muted: #A0A0B0;
+    /* Texto secundário/muted */
+    --accent-color: #7B4BFF;
+    /* Roxo/Azul vibrante principal */
+    --accent-color-hover: #6a3ffb;
+    /* Hover do accent */
+    --border-color: #3a3f58;
+    /* Cor sutil para bordas */
+    --sidebar-width: 260px;
+    --sidebar-width-collapsed: 80px;
+    /* Largura da sidebar colapsada */
+    --font-family: 'Poppins', sans-serif;
+    /* Fonte definida no header.php */
+}
+
+/* Reset básico e estilo do body */
+body.dashboard-body {
+    background-color: var(--bg-dark-primary);
+    color: var(--text-light);
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    min-height: 100vh;
+    font-size: 15px;
+    /* Tamanho de fonte base */
+}
+
+/* --- Sidebar --- */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--bg-dark-secondary);
+    padding: 25px 15px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+    transition: width 0.3s ease;
+    /* Transição para colapsar */
+    z-index: 1000;
+    /* Para ficar acima do conteúdo */
+}
+
+.sidebar-header {
+    text-align: center;
+    margin-bottom: 35px;
+    padding: 10px 0;
+}
+
+.sidebar-header .logo {
+    color: var(--text-light);
+    font-size: 1.7em;
+    /* Tamanho do logo */
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+}
+
+/* Estilo da Navegação da Sidebar */
+.sidebar-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+    /* Ocupa espaço vertical */
+}
+
+.sidebar-nav li {
+    margin-bottom: 8px;
+    /* Espaçamento entre itens */
+}
+
+.sidebar-nav a {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    /* Padding interno dos links */
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 10px;
+    /* Cantos arredondados */
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-size: 0.98em;
+    /* Tamanho da fonte dos links */
+    white-space: nowrap;
+    /* Impede quebra de linha do texto */
+    overflow: hidden;
+    /* Esconde texto quando colapsado */
+}
+
+.sidebar-nav a i {
+    margin-right: 18px;
+    /* Espaço entre ícone e texto */
+    font-size: 1.15em;
+    /* Tamanho do ícone */
+    width: 22px;
+    /* Largura fixa para alinhar ícones */
+    text-align: center;
+    flex-shrink: 0;
+    /* Impede que o ícone encolha */
+    transition: margin-right 0.3s ease;
+}
+
+.sidebar-nav a span {
+    transition: opacity 0.3s ease;
+    /* Transição suave para o texto */
+}
+
+.sidebar-nav a:hover {
+    background-color: rgba(123, 75, 255, 0.1);
+    /* Fundo suave no hover */
+    color: var(--text-light);
+    /* Texto mais claro no hover */
+}
+
+.sidebar-nav a.active {
+    background-color: var(--accent-color);
+    /* Fundo accent no ativo */
+    color: #ffffff;
+    /* Texto branco no ativo */
+    font-weight: 500;
+}
+
+.sidebar-nav a.active i {
+    color: #ffffff;
+    /* Ícone branco no ativo */
+}
+
+/* Rodapé da Sidebar (Logout) */
+.sidebar-footer {
+    margin-top: auto;
+    /* Empurra para o final */
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.sidebar-footer a {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 10px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-size: 0.98em;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-footer a:hover {
+    color: #dc3545;
+    /* Vermelho para logout no hover */
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.sidebar-footer a i {
+    margin-right: 18px;
+    font-size: 1.15em;
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+    transition: margin-right 0.3s ease;
+}
+
+.sidebar-footer a span {
+    transition: opacity 0.3s ease;
+}
+
+
+/* --- Conteúdo Principal --- */
+.main-content {
+    margin-left: var(--sidebar-width);
+    /* Espaço para a sidebar */
+    padding: 35px 45px;
+    /* Padding interno */
+    width: calc(100% - var(--sidebar-width));
+    background-color: var(--bg-dark-primary);
+    transition: margin-left 0.3s ease, width 0.3s ease;
+    /* Transição para colapsar */
+    overflow-y: auto;
+    /* Scroll se necessário */
+}
+
+.main-content h2 {
+    color: var(--text-light);
+    margin-bottom: 30px;
+    /* Espaço abaixo do título principal */
+    font-weight: 600;
+    font-size: 1.8em;
+}
+
+.main-content h4 {
+    /* Estilo padrão para títulos de card */
+    color: var(--text-light);
+    margin-bottom: 15px;
+    font-weight: 500;
+    font-size: 1.25em;
+    /* Tamanho do título do card */
+}
+
+/* --- Cards do Dashboard --- */
+.dashboard-card {
+    background-color: var(--bg-dark-secondary);
+    border-radius: 14px;
+    /* Cantos mais arredondados */
+    padding: 30px;
+    /* Padding interno do card */
+    margin-bottom: 30px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    /* Sombra mais pronunciada */
+    height: 100%;
+    /* Para alinhar cards na mesma linha (Bootstrap row) */
+    display: flex;
+    flex-direction: column;
+    /* Organiza conteúdo verticalmente */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    /* Efeito sutil de levantar no hover */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-card .card-icon {
+    /* Estilo para ícone dentro do card, se houver */
+    font-size: 1.5em;
+    color: var(--accent-color);
+    margin-right: 12px;
+    vertical-align: middle;
+    /* Alinha com o texto do título */
+}
+
+.dashboard-card h4 {
+    /* Ajuste específico para título do card */
+    display: flex;
+    align-items: center;
+    /* Alinha ícone e texto do título */
+    margin-bottom: 20px;
+}
+
+
+.dashboard-card p {
+    color: var(--text-muted);
+    /* Cor do texto do card */
+    font-size: 0.95em;
+    /* Tamanho do texto do card */
+    line-height: 1.6;
+    flex-grow: 1;
+    /* Faz o parágrafo ocupar espaço */
+    margin-bottom: 25px;
+    /* Espaço antes do botão */
+}
+
+.dashboard-card .btn-primary {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+    font-weight: 500;
+    padding: 12px 25px;
+    /* Padding do botão */
+    border-radius: 8px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    align-self: flex-start;
+    /* Alinha o botão à esquerda */
+    text-transform: uppercase;
+    /* Caixa alta */
+    font-size: 0.85em;
+    letter-spacing: 0.5px;
+}
+
+.dashboard-card .btn-primary:hover {
+    background-color: var(--accent-color-hover);
+    border-color: var(--accent-color-hover);
+    transform: scale(1.03);
+    /* Leve aumento no hover */
+}
+
+.dashboard-card .btn-primary:active {
+    transform: scale(0.98);
+    /* Efeito de clique */
+}
+
+
+/* --- Ajustes Bootstrap --- */
+.container,
+.container-fluid,
+.container-lg,
+.container-md,
+.container-sm,
+.container-xl,
+.container-xxl {
+    padding-left: 0;
+    padding-right: 0;
+    max-width: 100%;
+}
+
+/* Garante que as rows/cols funcionem bem no contexto */
+.row {
+    --bs-gutter-x: 2rem;
+    /* Aumenta o espaçamento horizontal entre colunas */
+    --bs-gutter-y: 1.5rem;
+    /* Adiciona espaçamento vertical entre colunas */
+}
+
+
+/* --- Responsividade --- */
+
+/* Telas Médias (Tablets) - Colapsar Sidebar */
+@media (max-width: 992px) {
+    .sidebar {
+        width: var(--sidebar-width-collapsed);
+    }
+
+    .sidebar-header .logo {
+        opacity: 0;
+        /* Esconde o logo texto */
+        pointer-events: none;
+        /* Impede interação */
+    }
+
+    .sidebar-nav a span,
+    .sidebar-footer a span {
+        opacity: 0;
+        /* Esconde o texto dos links */
+        width: 0;
+        pointer-events: none;
+    }
+
+    .sidebar-nav a i,
+    .sidebar-footer a i {
+        margin-right: 0;
+        /* Remove margem do ícone */
+    }
+
+    .sidebar-nav a,
+    .sidebar-footer a {
+        justify-content: center;
+        /* Centraliza o ícone */
+    }
+
+    .main-content {
+        margin-left: var(--sidebar-width-collapsed);
+        width: calc(100% - var(--sidebar-width-collapsed));
+        padding: 30px;
+        /* Reduz padding lateral */
+    }
+}
+
+/* Telas Pequenas (Celulares) - Sidebar some ou vira barra superior (Exemplo: some) */
+@media (max-width: 768px) {
+    body.dashboard-body {
+        display: block;
+        /* Remove flex layout */
+    }
+
+    .sidebar {
+        /* Poderia ser transformado num menu off-canvas com JS */
+        /* Ou simplesmente escondido/movido */
+        position: static;
+        /* Remove fixo */
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        flex-direction: row;
+        /* Itens em linha */
+        justify-content: space-around;
+        /* Espaça os itens */
+        padding: 10px 5px;
+        z-index: 1001;
+        /* Acima do conteúdo */
+    }
+
+    .sidebar-header {
+        display: none;
+    }
+
+    /* Esconde header da sidebar */
+    .sidebar-nav {
+        flex-grow: 0;
+        display: flex;
+    }
+
+    /* Nav em linha */
+    .sidebar-nav li {
+        margin-bottom: 0;
+        margin-right: 5px;
+    }
+
+    .sidebar-nav a {
+        padding: 10px;
+    }
+
+    .sidebar-nav a span {
+        display: none;
+    }
+
+    /* Esconde texto sempre */
+    .sidebar-nav a i {
+        margin-right: 0;
+        font-size: 1.3em;
+    }
+
+    .sidebar-footer {
+        display: none;
+    }
+
+    /* Esconde rodapé da sidebar */
+
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px 15px;
+        /* Menos padding */
+    }
+
+    .main-content h2 {
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+
+    .dashboard-card {
+        padding: 20px;
+        /* Menos padding nos cards */
+    }
+
+    .dashboard-card h4 {
+        font-size: 1.1em;
+    }
+
+    .dashboard-card p {
+        font-size: 0.9em;
+        margin-bottom: 20px;
+    }
+
+    .dashboard-card .btn-primary {
+        padding: 10px 20px;
+        font-size: 0.8em;
+        width: 100%;
+        /* Botão ocupa largura total */
+        text-align: center;
+    }
+
+    .row {
+        --bs-gutter-x: 1rem;
+        /* Reduz espaçamento */
+    }
+}
