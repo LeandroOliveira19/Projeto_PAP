@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\xampp\htdocs\Projeto_PAP\chat.php
 session_start();
 
 // Verifica se o usuário está logado
@@ -13,698 +14,944 @@ include 'header.php'; // Inclui cabeçalho e início do body/sidebar
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? null; // Garante que role existe
 $user_name = $_SESSION['name'] ?? 'Utilizador';
-$other_user_id = null; // ID do usuário com quem se está a conversar
-$other_user_name = 'Conversa'; // Nome padrão para o cabeçalho do chat
+$page_error = '';
+$conversations = []; // Array para guardar a lista de conversas
 
-// --- INÍCIO: Lógica para identificar o parceiro de chat ---
-if ($user_role === 'client') {
-    try {
+// --- ETAPA 1: Popular conversas com base no papel (relações cliente-profissional) ---
+try {
+    if ($user_role === 'client') {
         $stmt_client = $pdo->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
         $stmt_client->execute([$user_id]);
         $client = $stmt_client->fetch();
+
         if ($client) {
-            $client_id = $client['id'];
-            // Tenta encontrar treinador ativo primeiro
-            $stmt_trainer = $pdo->prepare("
-                SELECT wp.trainer_id, u.name as trainer_name
-                FROM workout_plans wp
-                JOIN users u ON wp.trainer_id = u.id
-                WHERE wp.client_id = ? AND wp.is_active = 1
-                ORDER BY wp.created_at DESC LIMIT 1
-            ");
-            $stmt_trainer->execute([$client_id]);
-            $trainer_info = $stmt_trainer->fetch();
-            if ($trainer_info) {
-                $other_user_id = $trainer_info['trainer_id'];
-                $other_user_name = $trainer_info['trainer_name'];
-            } else {
-                // Se não houver treinador ativo, tenta encontrar nutricionista ativo
-                 $stmt_nutritionist = $pdo->prepare("
-                    SELECT dp.nutritionist_id, u.name as nutritionist_name
-                    FROM diet_plans dp
-                    JOIN users u ON dp.nutritionist_id = u.id
-                    WHERE dp.client_id = ? AND dp.is_active = 1 -- Assumindo que diet_plans tem is_active
-                    ORDER BY dp.created_at DESC LIMIT 1
-                ");
-                 $stmt_nutritionist->execute([$client_id]);
-                 $nutritionist_info = $stmt_nutritionist->fetch();
-                 if ($nutritionist_info) {
-                     $other_user_id = $nutritionist_info['nutritionist_id'];
-                     $other_user_name = $nutritionist_info['nutritionist_name'] . " (Nutri)";
-                 } else {
-                     $other_user_name = "Nenhum Profissional Atribuído";
-                 }
+            $client_table_id = $client['id']; // Usar client_table_id para clareza
+
+            // Buscar Treinador(es) com plano ativo
+            $stmt_trainers = $pdo->prepare("
+                SELECT DISTINCT u.id, u.name, u.profile_picture
+                FROM users u
+                JOIN workout_plans wp ON u.id = wp.trainer_id
+                WHERE wp.client_id = ? AND wp.is_active = 1 AND u.role = 'trainer'
+            "); // client_id aqui refere-se ao id da tabela clients
+            $stmt_trainers->execute([$client_table_id]);
+            $trainers = $stmt_trainers->fetchAll();
+            foreach ($trainers as $trainer) {
+                $avatar_path = 'assets/img/profile_pics/' . $trainer['profile_picture'];
+                $avatar_url = ($trainer['profile_picture'] && file_exists($avatar_path)) ? $avatar_path : 'assets/img/avatars/default.png';
+                $conversations[$trainer['id']] = [
+                    'user_id' => $trainer['id'],
+                    'name' => $trainer['name'] . " (Trainer)",
+                    'avatar' => $avatar_url,
+                    'last_message' => '', // Placeholder
+                    'timestamp' => null, // Placeholder
+                    'unread_count' => 0 // Placeholder
+                ];
+            }
+
+            // Buscar Nutricionista(s) com plano ativo
+            $stmt_nutritionists = $pdo->prepare("
+                SELECT DISTINCT u.id, u.name, u.profile_picture
+                FROM users u
+                JOIN diet_plans dp ON u.id = dp.nutritionist_id
+                WHERE dp.client_id = ? AND dp.is_active = 1 AND u.role = 'nutritionist'
+            "); // client_id aqui refere-se ao id da tabela clients
+            $stmt_nutritionists->execute([$client_table_id]);
+            $nutritionists = $stmt_nutritionists->fetchAll();
+            foreach ($nutritionists as $nutritionist) {
+                 $avatar_path = 'assets/img/profile_pics/' . $nutritionist['profile_picture'];
+                 $avatar_url = ($nutritionist['profile_picture'] && file_exists($avatar_path)) ? $avatar_path : 'assets/img/avatars/default.png';
+                 $conversations[$nutritionist['id']] = [
+                    'user_id' => $nutritionist['id'],
+                    'name' => $nutritionist['name'] . " (Nutri)",
+                    'avatar' => $avatar_url,
+                    'last_message' => '', // Placeholder
+                    'timestamp' => null, // Placeholder
+                    'unread_count' => 0 // Placeholder
+                ];
             }
         } else {
-             $other_user_name = "Erro: Registo de cliente não encontrado.";
+            $page_error = "Erro: Registo de cliente não encontrado.";
         }
-    } catch (PDOException $e) {
-        error_log("Erro BD ao buscar profissional do cliente (chat.php): " . $e->getMessage());
-        $other_user_name = "Erro ao buscar Profissional";
-    }
 
-} elseif ($user_role === 'trainer') {
-     if (isset($_GET['user_id']) && filter_var($_GET['user_id'], FILTER_VALIDATE_INT)) {
-        $potential_client_user_id = $_GET['user_id'];
-        try {
-            // Verifica se o ID pertence a um cliente válido
-            $stmt_check_client = $pdo->prepare("SELECT u.name FROM users u JOIN clients c ON u.id = c.user_id WHERE u.id = ? AND u.role = 'client' LIMIT 1");
-            $stmt_check_client->execute([$potential_client_user_id]);
-            $other_user_info = $stmt_check_client->fetch();
+    } elseif (in_array($user_role, ['trainer', 'nutritionist'])) {
+        // Buscar Clientes com planos ativos associados a este profissional
+        $plan_table = ($user_role === 'trainer') ? 'workout_plans' : 'diet_plans';
+        $professional_id_column = ($user_role === 'trainer') ? 'trainer_id' : 'nutritionist_id';
 
-            if ($other_user_info) {
-                 // Verifica se este treinador tem um plano ATIVO para este cliente
-                 $stmt_check_relation = $pdo->prepare("
-                    SELECT 1 FROM workout_plans wp
-                    JOIN clients c ON wp.client_id = c.id
-                    WHERE c.user_id = :client_user_id AND wp.trainer_id = :trainer_id AND wp.is_active = 1
-                    LIMIT 1
-                 ");
-                 $stmt_check_relation->execute(['client_user_id' => $potential_client_user_id, 'trainer_id' => $user_id]);
+        $sql_clients = "
+            SELECT DISTINCT u.id, u.name, u.profile_picture
+            FROM users u
+            JOIN clients c ON u.id = c.user_id
+            JOIN $plan_table p ON c.id = p.client_id
+            WHERE p.$professional_id_column = ? AND u.role = 'client'
+        ";
+        // Adiciona a condição is_active se a coluna existir
+        if ($plan_table === 'workout_plans' || $plan_table === 'diet_plans') {
+             $sql_clients .= " AND p.is_active = 1";
+        }
+        $sql_clients .= " ORDER BY u.name";
 
-                 if ($stmt_check_relation->fetch()) {
-                    $other_user_id = $potential_client_user_id;
-                    $other_user_name = $other_user_info['name'];
-                 } else {
-                     $other_user_id = null;
-                     $other_user_name = "Não tem plano ativo com este cliente";
-                 }
-            } else {
-                 $other_user_id = null;
-                 $other_user_name = "Cliente Inválido ou não encontrado";
-            }
-        } catch (PDOException $e) {
-             error_log("Erro BD ao buscar nome/relação do cliente para chat (trainer): " . $e->getMessage());
-             $other_user_name = "Erro ao buscar Cliente";
-             $other_user_id = null;
+        $stmt_clients = $pdo->prepare($sql_clients);
+        $stmt_clients->execute([$user_id]);
+        $clients_data = $stmt_clients->fetchAll(); // Renomeado para evitar conflito
+
+        foreach ($clients_data as $client_item) { // Renomeado para evitar conflito
+             $avatar_path = 'assets/img/profile_pics/' . $client_item['profile_picture'];
+             $avatar_url = ($client_item['profile_picture'] && file_exists($avatar_path)) ? $avatar_path : 'assets/img/avatars/default.png';
+             $conversations[$client_item['id']] = [
+                'user_id' => $client_item['id'],
+                'name' => $client_item['name'],
+                'avatar' => $avatar_url,
+                'last_message' => '', // Placeholder
+                'timestamp' => null, // Placeholder
+                'unread_count' => 0 // Placeholder
+            ];
         }
     } else {
-        $other_user_name = "Selecione um cliente na lista para conversar";
+        $page_error = "Chat não disponível para sua função.";
     }
-} elseif ($user_role === 'nutritionist') {
-     if (isset($_GET['user_id']) && filter_var($_GET['user_id'], FILTER_VALIDATE_INT)) {
-        $potential_client_user_id = $_GET['user_id'];
-         try {
-             // Verifica se o ID pertence a um cliente válido
-             $stmt_check_client = $pdo->prepare("SELECT u.name FROM users u JOIN clients c ON u.id = c.user_id WHERE u.id = ? AND u.role = 'client' LIMIT 1");
-             $stmt_check_client->execute([$potential_client_user_id]);
-             $other_user_info = $stmt_check_client->fetch();
-
-             if ($other_user_info) {
-                  // Verifica se este nutricionista tem um plano ATIVO para este cliente
-                 $stmt_check_relation = $pdo->prepare("
-                    SELECT 1 FROM diet_plans dp
-                    JOIN clients c ON dp.client_id = c.id
-                    WHERE c.user_id = :client_user_id AND dp.nutritionist_id = :nutritionist_id AND dp.is_active = 1 -- Assumindo is_active
-                    LIMIT 1
-                 ");
-                 $stmt_check_relation->execute(['client_user_id' => $potential_client_user_id, 'nutritionist_id' => $user_id]);
-
-                 if ($stmt_check_relation->fetch()) {
-                    $other_user_id = $potential_client_user_id;
-                    $other_user_name = $other_user_info['name'];
-                 } else {
-                     $other_user_id = null;
-                     $other_user_name = "Não tem plano ativo com este cliente";
-                 }
-             } else {
-                 $other_user_id = null;
-                 $other_user_name = "Cliente Inválido ou não encontrado";
-             }
-        } catch (PDOException $e) {
-             error_log("Erro BD ao buscar nome/relação do cliente para chat (nutri): " . $e->getMessage());
-             $other_user_name = "Erro ao buscar Cliente";
-             $other_user_id = null;
-        }
-     } else {
-         $other_user_name = "Selecione um cliente na lista para conversar";
-     }
-} else {
-    // Admin ou outro role não previsto para chat direto
-    $other_user_name = "Chat não disponível para sua função";
+} catch (PDOException $e) {
+    $page_error = "Erro de Banco de Dados ao carregar conversas.";
+    error_log("Erro BD ao buscar conversas (chat.php): " . $e->getMessage());
 }
-// --- FIM: Lógica para identificar o parceiro de chat ---
+// --- FIM ETAPA 1 ---
 
+// --- ETAPA 1.5: Adicionar conversas baseadas em mensagens existentes ---
+try {
+    $stmt_existing_chats = $pdo->prepare("
+        SELECT DISTINCT
+            CASE
+                WHEN m.sender_id = :current_user_id THEN m.receiver_id
+                ELSE m.sender_id
+            END as other_user_id,
+            u.name as other_user_name,
+            u.profile_picture as other_user_avatar,
+            u.role as other_user_role
+        FROM messages m
+        JOIN users u ON u.id = (CASE WHEN m.sender_id = :current_user_id THEN m.receiver_id ELSE m.sender_id END)
+        WHERE (m.sender_id = :current_user_id OR m.receiver_id = :current_user_id)
+          AND u.id != :current_user_id
+    ");
+    $stmt_existing_chats->execute(['current_user_id' => $user_id]);
+    $existing_chat_partners = $stmt_existing_chats->fetchAll();
+
+    foreach ($existing_chat_partners as $partner) {
+        if (!isset($conversations[$partner['other_user_id']])) { // Adiciona apenas se não estiver já lá
+            $avatar_path_partner = 'assets/img/profile_pics/' . $partner['other_user_avatar'];
+            $avatar_url_partner = ($partner['other_user_avatar'] && file_exists($avatar_path_partner)) ? $avatar_path_partner : 'assets/img/avatars/default.png';
+
+            $conversations[$partner['other_user_id']] = [
+                'user_id' => $partner['other_user_id'],
+                'name' => $partner['other_user_name'] . ($partner['other_user_role'] !== 'client' ? " (".ucfirst($partner['other_user_role']).")" : ""),
+                'avatar' => $avatar_url_partner,
+                'last_message' => '', // Placeholder, pode ser preenchido depois com a última mensagem real
+                'timestamp' => null,  // Placeholder
+                'unread_count' => 0 // Placeholder, pode ser preenchido depois
+            ];
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Erro BD ao buscar parceiros de chat existentes (chat.php): " . $e->getMessage());
+    // Não definir $page_error aqui, pois pode haver outras conversas válidas na Etapa 1.
+}
+// --- FIM ETAPA 1.5 ---
+
+// --- ETAPA 2: Adicionar utilizador de $_GET['user_id'] se não estiver já na lista ---
+$target_user_id_from_get = isset($_GET['user_id']) ? filter_var($_GET['user_id'], FILTER_VALIDATE_INT) : null;
+
+if ($target_user_id_from_get && $target_user_id_from_get != $user_id) { // Não conversar consigo mesmo
+    if (!isset($conversations[$target_user_id_from_get])) {
+        // O utilizador alvo não está na lista de conversas "naturais" (ex: cliente-profissional)
+        // Vamos buscá-lo diretamente para permitir o chat.
+        try {
+            $stmt_target_user = $pdo->prepare("SELECT id, name, profile_picture, role FROM users WHERE id = ?");
+            $stmt_target_user->execute([$target_user_id_from_get]);
+            $target_user_data = $stmt_target_user->fetch();
+
+            if ($target_user_data) {
+                $avatar_path_target = 'assets/img/profile_pics/' . $target_user_data['profile_picture'];
+                $avatar_url_target = ($target_user_data['profile_picture'] && file_exists($avatar_path_target)) ? $avatar_path_target : 'assets/img/avatars/default.png';
+                
+                // Adiciona à lista de conversas
+                $conversations[$target_user_data['id']] = [
+                    'user_id' => $target_user_data['id'],
+                    'name' => $target_user_data['name'] . ($target_user_data['role'] !== 'client' ? " (".ucfirst($target_user_data['role']).")" : ""),
+                    'avatar' => $avatar_url_target,
+                    'last_message' => '', // Placeholder
+                    'timestamp' => null, // Placeholder
+                    'unread_count' => 0 // Placeholder
+                ];
+            }
+        } catch (PDOException $e) {
+            error_log("Erro BD ao buscar utilizador alvo para chat (chat.php): " . $e->getMessage());
+            // Não definir $page_error aqui, pois pode haver outras conversas válidas.
+        }
+    }
+}
+// --- FIM ETAPA 2 ---
+
+// --- ETAPA 3: Determinar chat ativo ---
+$active_chat_user_id = null;
+$active_chat_user_name = 'Selecione uma conversa';
+$active_chat_user_avatar = 'assets/img/avatars/default.png';
+
+if ($target_user_id_from_get && isset($conversations[$target_user_id_from_get])) {
+    $active_chat_user_id = $target_user_id_from_get;
+    $active_chat_user_name = $conversations[$active_chat_user_id]['name'];
+    $active_chat_user_avatar = $conversations[$active_chat_user_id]['avatar'];
+} elseif (!empty($conversations)) {
+    $first_conversation = reset($conversations);
+    $active_chat_user_id = $first_conversation['user_id'];
+    $active_chat_user_name = $first_conversation['name'];
+    $active_chat_user_avatar = $first_conversation['avatar'];
+} else {
+    if ($target_user_id_from_get) { $active_chat_user_name = "Utilizador para chat não encontrado."; }
+    elseif ($user_role === 'client') { $active_chat_user_name = "Nenhum Profissional Atribuído"; }
+    elseif (in_array($user_role, ['trainer', 'nutritionist'])) { $active_chat_user_name = "Nenhum cliente ativo"; }
+    else { $active_chat_user_name = "Nenhuma conversa disponível"; }
+}
+
+if (!empty($page_error) && !$active_chat_user_id) { // Se houve erro na Etapa 1 e não há chat ativo
+    $active_chat_user_name = $page_error;
+}
+// --- FIM ETAPA 3 ---
 
 // Define qual link da sidebar deve estar ativo
 $active_page = basename($_SERVER['PHP_SELF']);
 
+// Inclui a sidebar correta
+if ($user_role == 'client') {
+    include 'sidebar_client.php';
+} elseif ($user_role == 'trainer') {
+    include 'sidebar_trainer.php';
+} elseif ($user_role == 'nutritionist') {
+    include 'sidebar_nutritionist.php';
+} elseif ($user_role == 'admin') {
+    include 'sidebar_admin.php';
+} else {
+    // Fallback
+}
 ?>
-<!-- Sidebar (Estrutura adaptada - SEM ALTERAÇÕES AQUI) -->
-<aside class="sidebar">
-    <div class="sidebar-header">
-        <a href="<?= ($user_role == 'client') ? 'dashboard.php' : (($user_role == 'trainer') ? 'trainer.php' : (($user_role == 'nutritionist') ? 'nutritionist.php' : '#')) ?>" class="logo">
-            MyWellness<?= ($user_role == 'trainer') ? ' - Trainer' : (($user_role == 'nutritionist') ? ' - Nutri' : '') ?>
-        </a>
-    </div>
-    <nav>
-        <ul class="sidebar-nav">
-            <?php if ($user_role == 'client'): ?>
-                <li><a href="dashboard.php" class="<?= ($active_page == 'dashboard.php') ? 'active' : ''; ?>"><i class="fas fa-tachometer-alt fa-fw"></i><span>Dashboard</span></a></li>
-                <li><a href="workout_hub.php" class="<?= ($active_page == 'workout_hub.php') ? 'active' : ''; ?>"><i class="fas fa-dumbbell fa-fw"></i><span>Plano de Treino</span></a></li>
-                <li><a href="nutrition_hub.php" class="<?= ($active_page == 'nutrition_hub.php') ? 'active' : ''; ?>"><i class="fas fa-utensils fa-fw"></i><span>Nutrição</span></a></li>
-                <li><a href="classes.php" class="<?= ($active_page == 'classes.php') ? 'active' : ''; ?>"><i class="fas fa-calendar-check fa-fw"></i><span>Aulas</span></a></li>
-                <li><a href="profile.php" class="<?= ($active_page == 'profile.php') ? 'active' : ''; ?>"><i class="fas fa-user fa-fw"></i><span>Perfil</span></a></li>
-                <li><a href="chat.php" class="<?= ($active_page == 'chat.php') ? 'active' : ''; ?>"><i class="fas fa-comments fa-fw"></i><span>Chat</span></a></li>
-            <?php elseif ($user_role == 'trainer'): ?>
-                <li><a href="trainer.php" class="<?= ($active_page == 'trainer.php') ? 'active' : ''; ?>"><i class="fas fa-tachometer-alt fa-fw"></i><span>Painel Principal</span></a></li>
-                <li><a href="add_workout_plan.php" class="<?= ($active_page == 'add_workout_plan.php') ? 'active' : ''; ?>"><i class="fas fa-plus-square fa-fw"></i><span>Adicionar Plano</span></a></li>
-                <li><a href="client_history.php" class="<?= ($active_page == 'client_history.php') ? 'active' : ''; ?>"><i class="fas fa-history fa-fw"></i><span>Histórico Clientes</span></a></li>
-                <li><a href="profile.php" class="<?= ($active_page == 'profile.php') ? 'active' : ''; ?>"><i class="fas fa-user fa-fw"></i><span>Perfil</span></a></li>
-                <li><a href="chat.php" class="<?= ($active_page == 'chat.php') ? 'active' : ''; ?>"><i class="fas fa-comments fa-fw"></i><span>Chat</span></a></li>
-            <?php elseif ($user_role == 'nutritionist'): ?>
-                <li><a href="nutritionist.php" class="<?= ($active_page == 'nutritionist.php') ? 'active' : ''; ?>"><i class="fas fa-tachometer-alt fa-fw"></i><span>Painel Principal</span></a></li>
-                <li><a href="add_diet_plan.php" class="<?= ($active_page == 'add_diet_plan.php') ? 'active' : ''; ?>"><i class="fas fa-plus-square fa-fw"></i><span>Adicionar Plano</span></a></li>
-                 <li><a href="client_list_nutritionist.php" class="<?= ($active_page == 'client_list_nutritionist.php') ? 'active' : ''; ?>"><i class="fas fa-users fa-fw"></i><span>Clientes</span></a></li>
-                <li><a href="profile.php" class="<?= ($active_page == 'profile.php') ? 'active' : ''; ?>"><i class="fas fa-user fa-fw"></i><span>Perfil</span></a></li>
-                <li><a href="chat.php" class="<?= ($active_page == 'chat.php') ? 'active' : ''; ?>"><i class="fas fa-comments fa-fw"></i><span>Chat</span></a></li>
-            <?php endif; ?>
-        </ul>
-    </nav>
-    <div class="sidebar-footer">
-        <a href="logout.php"><i class="fas fa-sign-out-alt fa-fw"></i><span>Sair</span></a>
-    </div>
-</aside>
 
-<!-- Conteúdo Principal do Chat -->
+<!-- Estilos CSS para o novo layout -->
+<style>
+    :root {
+        /* Cores base (Light Mode - Fundo Cinza Claro Global) */
+        --chat-bg: #F0F2F5;
+        --chat-text: #1F2937;
+        --chat-border: #D1D5DB;
+        --chat-list-bg: var(--chat-bg);
+        --chat-list-hover-bg: #E5E7EB;
+        --chat-list-active-bg: #DBEAFE; /* Azul claro para ativo na lista */
+        --chat-list-active-border: #3B82F6; /* Borda azul para ativo */
+        --chat-header-bg: var(--chat-bg);
+        --chat-input-bg: var(--chat-bg);
+        --chat-input-border: #D1D5DB;
+        /* *** ALTERADO: Cores das Bolhas Enviadas para Azul *** */
+        --chat-sent-bg-whatsapp: #DBEAFE; /* Azul claro */
+        --chat-sent-text-whatsapp: #1E40AF; /* Texto azul escuro para contraste */
+        /* Cores das Bolhas Recebidas (Mantidas) */
+        --chat-received-bg-whatsapp: #FFFFFF;
+        --chat-received-text-whatsapp: #1F2937;
+        /* Outras cores */
+        --chat-placeholder-text: #6B7280;
+        --chat-icon-color: #54656F;
+        --chat-online-indicator: #10B981;
+        --chat-avatar-size: 40px;
+        --chat-header-avatar-size: 48px;
+        --chat-message-avatar-size: 32px;
+        /* Fundo padrão da área de mensagens (light) */
+        /* Removida --chat-messages-default-bg-light, usaremos --chat-bg diretamente */
+    }
+
+    .dark-mode {
+        /* Fundo Cinza Escuro Global */
+        --chat-bg: #111B21;
+        --chat-text: #E1E2E5;
+        --chat-border: #374151;
+        --chat-list-bg: var(--chat-bg);
+        --chat-list-hover-bg: #202C33;
+        --chat-list-active-bg: #2A3942;
+        --chat-list-active-border: #008069; /* Mantido verde escuro para lista ativa dark */
+        --chat-header-bg: #202C33;
+        --chat-input-bg: #202C33;
+        --chat-input-border: #374151;
+        /* *** ALTERADO: Cores das Bolhas Enviadas para Azul (Dark) *** */
+        --chat-sent-bg-whatsapp: #2563EB; /* Azul mais escuro */
+        --chat-sent-text-whatsapp: #E0E7FF; /* Texto claro azulado */
+        /* Cores das Bolhas Recebidas (Mantidas) */
+        --chat-received-bg-whatsapp: #202C33;
+        --chat-received-text-whatsapp: #E1E2E5;
+        /* Outras cores */
+        --chat-placeholder-text: #8696A0;
+        --chat-icon-color: #AEBAC1;
+        /* Fundo padrão da área de mensagens (dark) */
+        /* Removida --chat-messages-default-bg-dark, usaremos --chat-bg diretamente */
+    }
+
+    /* Estrutura Principal do Chat */
+    .main-content {
+        padding: 0;
+        height: calc(100vh - 60px);
+        overflow: hidden;
+    }
+
+    /* Garante que o wrapper principal use a cor de fundo definida */
+    .chat-wrapper {
+        display: flex;
+        height: 100%;
+        background-color: var(--chat-bg); /* Aplica a cor de fundo global */
+        color: var(--chat-text);
+    }
+
+    /* Coluna da Lista de Conversas */
+    .conversation-list-column {
+        width: 320px;
+        border-right: 1px solid var(--chat-border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        background-color: var(--chat-list-bg); /* Usa a variável da lista */
+    }
+
+    /* Ajusta fundo dos cabeçalhos */
+    .conversation-list-header,
+    .chat-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--chat-border);
+        background-color: var(--chat-header-bg); /* Usa a variável do header */
+    }
+    .chat-header { padding: 0.75rem 1.5rem; } /* Padding específico do header do chat */
+
+    /* Ajusta o fundo do input de busca na lista */
+    .conversation-search input {
+        background-color: #FFFFFF; /* Input branco no modo claro */
+        border: 1px solid var(--chat-input-border);
+        color: var(--chat-text);
+    }
+    .dark-mode .conversation-search input {
+        background-color: #2A3942; /* Input cinza claro no modo escuro */
+        border-color: var(--chat-input-border);
+        color: var(--chat-text);
+    }
+     .conversation-search input::placeholder {
+        color: var(--chat-placeholder-text);
+    }
+     .conversation-search .input-group-text {
+        background-color: #FFFFFF; /* Ícone com fundo branco no modo claro */
+        border-color: var(--chat-input-border);
+        color: var(--chat-icon-color);
+    }
+     .dark-mode .conversation-search .input-group-text {
+        background-color: #2A3942; /* Ícone com fundo cinza claro no modo escuro */
+        border-color: var(--chat-input-border);
+        color: var(--chat-icon-color);
+    }
+
+    .conversation-list {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 0.5rem 0;
+    }
+
+    .conversation-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .conversation-item:hover {
+        background-color: var(--chat-list-hover-bg);
+    }
+
+    .conversation-item.active {
+        background-color: var(--chat-list-active-bg);
+        border-left-color: var(--chat-list-active-border);
+    }
+
+    .conversation-item .avatar {
+        width: var(--chat-avatar-size);
+        height: var(--chat-avatar-size);
+        border-radius: 50%;
+        margin-right: 0.75rem;
+        object-fit: cover;
+    }
+
+    .conversation-details {
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
+    .conversation-name {
+        font-weight: 600;
+        margin-bottom: 0.1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .conversation-last-message {
+        font-size: 0.85em;
+        color: var(--chat-placeholder-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .conversation-meta {
+        text-align: right;
+        font-size: 0.75em;
+        color: var(--chat-placeholder-text);
+        margin-left: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .conversation-time {
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .conversation-unread-badge {
+        background-color: var(--chat-list-active-border);
+        color: var(--chat-bg); /* Contraste com fundo global */
+        font-size: 0.7em;
+        padding: 0.15rem 0.4rem;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+    .dark-mode .conversation-unread-badge {
+         color: var(--chat-text);
+    }
+
+
+    /* Coluna do Chat Ativo */
+    .active-chat-column {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        height: 100%;
+    }
+
+    .chat-header .avatar {
+        width: var(--chat-header-avatar-size);
+        height: var(--chat-header-avatar-size);
+        border-radius: 50%;
+        margin-right: 1rem;
+        object-fit: cover;
+    }
+
+    .chat-header-info {
+        flex-grow: 1;
+    }
+
+    .chat-header-name {
+        font-size: 1.1em;
+        font-weight: 600;
+        margin-bottom: 0;
+        color: var(--chat-text);
+    }
+
+    .chat-header-status {
+        font-size: 0.8em;
+        color: var(--chat-online-indicator);
+    }
+    .chat-header-status.offline {
+        color: var(--chat-placeholder-text);
+    }
+
+    .chat-header-actions .btn {
+        color: var(--chat-icon-color);
+        font-size: 1.1rem;
+        padding: 0.5rem;
+        margin-left: 0.5rem;
+    }
+     .chat-header-actions .btn:hover {
+        color: var(--chat-text);
+    }
+
+    /* Área de Mensagens */
+    .chat-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        position: relative;
+        background-color: var(--chat-bg); /* Usa a cor de fundo principal do chat */
+        background-size: cover; /* Ou 'auto', 'contain', dependendo do efeito */
+        background-position: center;
+        background-repeat: no-repeat; /* Ou 'repeat' se for um padrão pequeno */
+    }
+    .dark-mode .chat-messages {
+        background-color: var(--chat-bg); /* Continua usando a cor de fundo principal do chat no modo escuro */
+    }
+
+    /* Overlay para fundos personalizados */
+    .chat-messages::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background-color: transparent; z-index: 1; pointer-events: none; opacity: 0;
+        transition: opacity 0.3s ease, background-color 0.3s ease;
+    }
+
+    /* Regras para quando HÁ fundo personalizado */
+    .chat-messages.has-custom-background {
+        background-color: transparent; /* Torna transparente para ver imagem por baixo */
+        /* A imagem personalizada será definida pelo JS via style.backgroundImage */
+    }
+    .chat-messages.has-custom-background::before {
+        /* Overlay SUAVE para melhorar legibilidade sobre imagens customizadas */
+        background-color: rgba(255, 255, 255, 0.05);
+        opacity: 1;
+    }
+    .dark-mode .chat-messages.has-custom-background::before {
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+
+
+    /* Wrapper para Avatar + Bolha */
+    .message-wrapper {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.6rem;
+        max-width: 85%;
+    }
+    .sent-wrapper {
+        justify-content: flex-end;
+        margin-left: auto;
+    }
+    .received-wrapper {
+        justify-content: flex-start;
+        margin-right: auto;
+    }
+
+    /* Avatar da Mensagem */
+    .message-avatar {
+        width: var(--chat-message-avatar-size);
+        height: var(--chat-message-avatar-size);
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        margin-bottom: 5px;
+    }
+
+    /* Bolhas de Mensagem */
+    .message-bubble {
+        padding: 0.6rem 0.9rem;
+        border-radius: 8px; /* Menos arredondado, como WhatsApp */
+        max-width: 100%;
+        word-wrap: break-word;
+        position: relative;
+        z-index: 2;
+        line-height: 1.4;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+    }
+
+    .message-bubble.sent {
+        background-color: var(--chat-sent-bg-whatsapp); /* Usa a variável azul */
+        color: var(--chat-sent-text-whatsapp);
+    }
+
+    .message-bubble.received {
+        background-color: var(--chat-received-bg-whatsapp); /* Usa a variável branca/cinza */
+        color: var(--chat-received-text-whatsapp);
+    }
+
+    /* Adiciona "rabicho" como no WhatsApp (opcional) */
+    .message-bubble.sent::after, .message-bubble.received::before {
+        content: "";
+        position: absolute;
+        bottom: 0px;
+        width: 0;
+        height: 0;
+        border: 10px solid transparent;
+    }
+    .message-bubble.sent::after {
+        right: -8px;
+        border-left-color: var(--chat-sent-bg-whatsapp); /* Usa a variável azul */
+        border-right: 0;
+        border-bottom: 0;
+    }
+    .message-bubble.received::before {
+        left: -8px;
+        border-right-color: var(--chat-received-bg-whatsapp); /* Usa a variável branca/cinza */
+        border-left: 0;
+        border-bottom: 0;
+    }
+    /* Esconde rabicho se houver imagem/vídeo */
+    .message-bubble:has(img)::after, .message-bubble:has(video)::after,
+    .message-bubble:has(img)::before, .message-bubble:has(video)::before {
+        display: none;
+    }
+
+
+    .message-content {
+        display: flex; flex-direction: column;
+    }
+    .message-caption {
+        font-size: 0.9em; margin-bottom: 5px;
+    }
+    /* Imagem/Vídeo */
+    .message-bubble img, .message-bubble video {
+        display: block; max-width: 300px; max-height: 250px; width: auto; height: auto;
+        object-fit: cover; border-radius: 6px; margin-top: 5px; cursor: pointer;
+    }
+    .message-bubble video { max-width: 350px; max-height: 280px; }
+
+    /* Player de Áudio */
+    .custom-audio-player { display: flex; align-items: center; gap: 0.5rem; background-color: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: 15px; max-width: 300px; }
+    .dark-mode .custom-audio-player { background-color: rgba(255,255,255,0.1); }
+    .custom-audio-player .play-pause-btn { background: none; border: none; color: var(--chat-icon-color); font-size: 1.2rem; cursor: pointer; padding: 0; }
+    .custom-audio-player .duration { font-size: 0.8em; color: var(--chat-placeholder-text); margin-left: auto; }
+    .waveform-wrapper { flex-grow: 1; height: 30px; position: relative; cursor: pointer; overflow: hidden; background-color: rgba(0,0,0,0.05); border-radius: 3px; }
+    .dark-mode .waveform-wrapper { background-color: rgba(255,255,255,0.08); }
+    .waveform-container { display: flex; align-items: flex-end; height: 100%; gap: 1px; }
+    .waveform-bar { background-color: var(--chat-icon-color); width: 2px; flex-grow: 1; }
+    .waveform-progress-overlay { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background-color: var(--chat-list-active-border); opacity: 0.7; pointer-events: none; border-radius: 3px; }
+
+
+    .timestamp {
+        font-size: 0.7em;
+        color: var(--chat-placeholder-text);
+        margin-top: 0.3rem;
+        text-align: right;
+        float: right;
+        margin-left: 10px;
+        line-height: 1;
+        clear: both;
+    }
+    .message-bubble.received .timestamp {
+        text-align: right;
+        color: var(--chat-placeholder-text);
+    }
+    .dark-mode .timestamp {
+        color: #8696A0;
+    }
+
+    /* Área de Input */
+    .chat-input-area {
+        padding: 0.75rem 1.5rem;
+        border-top: 1px solid var(--chat-border);
+        background-color: var(--chat-input-bg); /* Usa a variável da área de input */
+        flex-shrink: 0;
+    }
+
+    .chat-input-area .input-group {
+        align-items: center;
+    }
+
+    /* Ajusta o fundo do input principal de mensagem */
+    .chat-input-area #message-input {
+        border-radius: 20px;
+        border: 1px solid var(--chat-input-border);
+        background-color: #FFFFFF; /* Input branco no modo claro */
+        padding: 0.6rem 1rem;
+        color: var(--chat-text);
+        box-shadow: none;
+    }
+    .dark-mode .chat-input-area #message-input {
+        background-color: #2A3942; /* Input cinza claro no modo escuro */
+        border-color: var(--chat-input-border);
+        color: var(--chat-text);
+    }
+
+    .chat-input-area #message-input::placeholder {
+        color: var(--chat-placeholder-text);
+    }
+    .chat-input-area #message-input:focus {
+         border-color: var(--chat-list-active-border);
+         box-shadow: none;
+    }
+
+    .chat-input-area .btn {
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 0.5rem;
+        font-size: 1.1rem;
+        padding: 0;
+        border: none;
+        background-color: transparent;
+        color: var(--chat-icon-color);
+    }
+
+     .chat-input-area #attach-button:hover,
+     .chat-input-area #send-button:hover:not(:disabled) {
+        background-color: var(--chat-list-hover-bg);
+    }
+    .dark-mode .chat-input-area #attach-button:hover,
+    .dark-mode .chat-input-area #send-button:hover:not(:disabled) {
+        background-color: var(--chat-list-hover-bg);
+    }
+
+
+    .chat-input-area #send-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Preview de ficheiro */
+    #file-preview-area { /* ... estilos ... */ }
+
+    /* Placeholder para quando não há conversa selecionada */
+    .no-chat-selected {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        color: var(--chat-placeholder-text);
+        background-color: var(--chat-bg); /* Usa o fundo global */
+    }
+     .no-chat-selected i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+        .conversation-list-column {
+            width: 100%;
+            border-right: none;
+            position: absolute;
+            left: -100%;
+            transition: left 0.3s ease;
+            z-index: 10;
+            height: 100%;
+        }
+        .conversation-list-column.open {
+            left: 0;
+        }
+        .active-chat-column {
+            width: 100%;
+        }
+        .chat-header .menu-toggle-btn { display: inline-block; margin-right: 1rem; }
+        .conversation-list-header .close-list-btn { display: inline-block; }
+    }
+    @media (min-width: 769px) {
+        .chat-header .menu-toggle-btn { display: none; }
+        .conversation-list-header .close-list-btn { display: none; }
+    }
+
+    /* Estilos para Modal */
+    .modal-close-button { position: absolute; top: 15px; right: 15px; font-size: 1.5rem; background: rgba(0,0,0,0.5); border-radius: 50%; color: white; opacity: 0.8; padding: 0.5rem 0.8rem; line-height: 1; }
+    .modal-close-button:hover { opacity: 1; }
+    .modal-media-container { /* ... */ }
+    .modal-download-action { position: absolute; bottom: 20px; right: 20px; color: white; background: rgba(0,0,0,0.5); padding: 0.5rem 0.8rem; border-radius: 5px; text-decoration: none; font-size: 1.1rem; }
+    .modal-download-action:hover { background: rgba(0,0,0,0.7); }
+    .predefined-bg-options-modal { /* ... */ }
+    .predefined-bg-thumb-modal { width: 100px; height: 100px; object-fit: cover; border-radius: 5px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s ease; }
+    .predefined-bg-thumb-modal:hover { border-color: var(--chat-list-active-border); }
+
+</style>
+
+<!-- Conteúdo Principal do Chat com Novo Layout -->
 <main class="main-content">
-    <div class="container-fluid mt-4">
-        <div class="card chat-container">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <!-- Título com nome do interlocutor -->
-                <h5 class="mb-0">Chat com <?= htmlspecialchars($other_user_name) ?></h5>
+    <div class="chat-wrapper">
 
-                 <!-- Botões de Ação -->
-                <div>
-                    <!-- Botão para Abrir Modal de Fundo -->
-                    <button class="btn btn-sm btn-light me-2" type="button" data-bs-toggle="modal" data-bs-target="#backgroundModal" title="Personalizar Fundo da Conversa">
-                        <i class="fas fa-image"></i>
-                    </button>
-
-                    <!-- Botão e Dropdown de Cores/Tema -->
-                    <div class="dropdown d-inline-block">
-                        <button class="btn btn-sm btn-light" type="button" id="chatSettingsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Personalizar Cores das Mensagens">
-                            <i class="fas fa-palette"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end p-3" aria-labelledby="chatSettingsDropdown" style="min-width: 250px;">
-                            <!-- REMOVIDO: Opção de Modo Escuro -->
-                            <!-- Opções de Cores das Bolhas -->
-                            <li class="mb-2">
-                                <label for="chatSentBg" class="form-label small mb-1">Fundo (Enviadas):</label>
-                                <input type="color" class="form-control form-control-color" id="chatSentBg" onchange="updateChatColor('--chat-sent-bg', this.value)" title="Escolher cor de fundo das mensagens enviadas">
-                            </li>
-                             <li class="mb-2">
-                                <label for="chatSentText" class="form-label small mb-1">Texto (Enviadas):</label>
-                                <input type="color" class="form-control form-control-color" id="chatSentText" onchange="updateChatColor('--chat-sent-text', this.value)" title="Escolher cor do texto das mensagens enviadas">
-                            </li>
-                             <li class="mb-2">
-                                <label for="chatReceivedBg" class="form-label small mb-1">Fundo (Recebidas):</label>
-                                <input type="color" class="form-control form-control-color" id="chatReceivedBg" onchange="updateChatColor('--chat-received-bg', this.value)" title="Escolher cor de fundo das mensagens recebidas">
-                            </li>
-                             <li class="mb-2">
-                                <label for="chatReceivedText" class="form-label small mb-1">Texto (Recebidas):</label>
-                                <input type="color" class="form-control form-control-color" id="chatReceivedText" onchange="updateChatColor('--chat-received-text', this.value)" title="Escolher cor do texto das mensagens recebidas">
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <button type="button" class="btn btn-secondary btn-sm w-100" onclick="resetChatColors()">Restaurar Cores Padrão</button>
-                            </li>
-                        </ul>
-                    </div>
-                    <!-- Fim do Dropdown -->
+        <!-- Coluna da Lista de Conversas -->
+        <div class="conversation-list-column" id="conversation-list-column">
+            <div class="conversation-list-header">
+                <button class="btn btn-sm btn-icon float-end close-list-btn" onclick="toggleConversationList(false)">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h4 style="color: var(--bs-body-color);">Mensagens</h4>
+                <div class="input-group mt-3 conversation-search">
+                    <span class="input-group-text border-end-0"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control border-start-0" placeholder="Procurar conversa...">
                 </div>
-                <!-- Fim dos Botões de Ação -->
             </div>
-            <div class="card-body chat-messages" id="chat-messages">
-                <!-- Mensagens serão carregadas aqui via JavaScript -->
-                <?php if (!$other_user_id): // Se não foi possível determinar o parceiro de chat ?>
-                    <div class="text-center text-muted mt-5 pt-5">
-                        <i class="fas fa-comments fa-3x mb-3"></i><br>
-                        <?php
-                        echo htmlspecialchars($other_user_name);
-                        // Links específicos para voltar
-                        if ($user_role == 'trainer') {
-                            echo ' <a href="trainer.php">Voltar ao painel principal</a>.';
-                        } elseif ($user_role == 'nutritionist') {
-                             echo ' <a href="nutritionist.php">Voltar ao painel principal</a>.';
-                        } elseif ($user_role == 'client' && strpos($other_user_name, 'Erro') === false) {
-                            echo ". Contacte o suporte se achar que isto é um erro.";
-                        }
-                        ?>
-                    </div>
+            <div class="conversation-list" id="conversation-list">
+                <?php if (!empty($conversations)): ?>
+                    <?php foreach ($conversations as $conv_user_id => $conv_data): ?>
+                        <a href="chat.php?user_id=<?= $conv_user_id ?>"
+                           class="conversation-item <?= ($conv_user_id == $active_chat_user_id) ? 'active' : '' ?>"
+                           data-user-id="<?= $conv_user_id ?>">
+                            <img src="<?= htmlspecialchars($conv_data['avatar']) ?>" alt="<?= htmlspecialchars($conv_data['name']) ?>" class="avatar">
+                            <div class="conversation-details">
+                                <div class="conversation-name"><?= htmlspecialchars($conv_data['name']) ?></div>
+                                <div class="conversation-last-message"><?= htmlspecialchars($conv_data['last_message'] ?: 'Nenhuma mensagem ainda') ?></div>
+                            </div>
+                            <div class="conversation-meta">
+                                <span class="conversation-time"><?= $conv_data['timestamp'] ? date('H:i', strtotime($conv_data['timestamp'])) : '' ?></span>
+                                <?php if ($conv_data['unread_count'] > 0): ?>
+                                    <span class="badge conversation-unread-badge"><?= $conv_data['unread_count'] ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="text-center text-muted p-3">Nenhuma conversa encontrada.</p>
                 <?php endif; ?>
             </div>
-            <?php if ($other_user_id): // Só mostra o formulário se houver um destinatário válido ?>
-            <div class="card-footer chat-input-area">
-                <form id="chat-form" autocomplete="off">
-                    <div class="input-group">
-                        <!-- Botão para Anexar Arquivo -->
-                        <button type="button" class="btn btn-secondary" id="attach-button" title="Anexar ficheiro (imagem, áudio, vídeo)">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                        <!-- Input de Arquivo Escondido -->
-                        <input type="file" id="file-input" accept="image/*,audio/*,video/*" style="display: none;">
+        </div>
 
-                        <!-- Input de Texto (agora pode ser legenda) -->
-                        <input type="text" id="message-input" class="form-control" placeholder="Digite sua mensagem ou legenda..." aria-label="Mensagem ou legenda">
-
-                        <!-- ID do Destinatário (oculto) -->
-                        <input type="hidden" id="receiver_id" value="<?= htmlspecialchars($other_user_id) ?>">
-
-                        <!-- Botão de Envio -->
-                        <button type="submit" class="btn btn-primary" id="send-button" aria-label="Enviar Mensagem">
-                            <i class="fas fa-paper-plane"></i> Enviar
-                        </button>
+        <!-- Coluna do Chat Ativo -->
+        <div class="active-chat-column">
+            <?php if ($active_chat_user_id): // Mostra chat se houver conversa ativa ?>
+                <div class="chat-header">
+                     <button class="btn btn-icon menu-toggle-btn" onclick="toggleConversationList(true)">
+                         <i class="fas fa-bars"></i>
+                     </button>
+                    <img src="<?= htmlspecialchars($active_chat_user_avatar) ?>" alt="<?= htmlspecialchars($active_chat_user_name) ?>" class="avatar">
+                    <div class="chat-header-info">
+                        <h5 class="chat-header-name mb-0"><?= htmlspecialchars($active_chat_user_name) ?></h5>
+                        <!-- <span class="chat-header-status">Online</span> -->
                     </div>
-                     <!-- Área para mostrar ficheiro selecionado (opcional) -->
-                    <div id="file-preview-area" class="mt-2" style="display: none;">
-                        <span class="badge bg-light text-dark p-2">
-                            <i class="fas fa-file me-1"></i>
-                            <span id="selected-file-name"></span>
-                            <button type="button" class="btn-close btn-sm ms-2" aria-label="Remover ficheiro" id="remove-file-button"></button>
-                        </span>
+                    <div class="chat-header-actions">
+                        <!-- <button class="btn btn-icon"><i class="fas fa-phone-alt"></i></button> -->
+                        <!-- <button class="btn btn-icon"><i class="fas fa-video"></i></button> -->
+                        <button class="btn btn-icon" type="button" data-bs-toggle="modal" data-bs-target="#backgroundModal" title="Personalizar Fundo"><i class="fas fa-image"></i></button>
+                        <div class="dropdown d-inline-block">
+                            <button class="btn btn-icon" type="button" id="chatSettingsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Personalizar Cores">
+                                <i class="fas fa-palette"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end p-3" aria-labelledby="chatSettingsDropdown" style="min-width: 250px;">
+                                <!-- Inputs de cor usam as variáveis --chat-*-whatsapp -->
+                                <li class="mb-2"><label for="chatSentBg" class="form-label small mb-1">Fundo (Enviadas):</label><input type="color" class="form-control form-control-color" id="chatSentBg" onchange="updateChatColor('--chat-sent-bg-whatsapp', this.value)" title="Escolher cor de fundo das mensagens enviadas"></li>
+                                <li class="mb-2"><label for="chatSentText" class="form-label small mb-1">Texto (Enviadas):</label><input type="color" class="form-control form-control-color" id="chatSentText" onchange="updateChatColor('--chat-sent-text-whatsapp', this.value)" title="Escolher cor do texto das mensagens enviadas"></li>
+                                <li class="mb-2"><label for="chatReceivedBg" class="form-label small mb-1">Fundo (Recebidas):</label><input type="color" class="form-control form-control-color" id="chatReceivedBg" onchange="updateChatColor('--chat-received-bg-whatsapp', this.value)" title="Escolher cor de fundo das mensagens recebidas"></li>
+                                <li class="mb-2"><label for="chatReceivedText" class="form-label small mb-1">Texto (Recebidas):</label><input type="color" class="form-control form-control-color" id="chatReceivedText" onchange="updateChatColor('--chat-received-text-whatsapp', this.value)" title="Escolher cor do texto das mensagens recebidas"></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button type="button" class="btn btn-secondary btn-sm w-100" onclick="resetChatColors()">Restaurar Cores Padrão</button></li>
+                            </ul>
+                        </div>
                     </div>
-                </form>
-            </div>
+                </div>
+                <div class="card-body chat-messages" id="chat-messages">
+                    <!-- Mensagens serão carregadas aqui -->
+                </div>
+                <div class="card-footer chat-input-area">
+                    <form id="chat-form" autocomplete="off">
+                        <div class="input-group">
+                            <button type="button" class="btn btn-icon" id="attach-button" title="Anexar ficheiro">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <input type="file" id="file-input" accept="image/*,audio/*,video/*" style="display: none;">
+                            <input type="text" id="message-input" class="form-control" placeholder="Digite sua mensagem..." aria-label="Mensagem">
+                            <input type="hidden" id="receiver_id" value="<?= htmlspecialchars($active_chat_user_id) ?>">
+                            <button type="submit" class="btn btn-icon" id="send-button" aria-label="Enviar Mensagem">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div id="file-preview-area" class="mt-2" style="display: none;">
+                            <span class="badge bg-light text-dark p-2">
+                                <i class="fas fa-file me-1"></i>
+                                <span id="selected-file-name"></span>
+                                <button type="button" class="btn-close btn-sm ms-2" aria-label="Remover ficheiro" id="remove-file-button"></button>
+                            </span>
+                        </div>
+                    </form>
+                </div>
+            <?php else: // Mostra placeholder se nenhuma conversa estiver ativa/selecionada ?>
+                <div class="no-chat-selected">
+                    <i class="fas fa-comments"></i>
+                    <p><?= htmlspecialchars($active_chat_user_name) ?></p>
+                    <?php if ($user_role !== 'client' && empty($conversations)): ?>
+                         <p>Adicione planos aos seus clientes para iniciar conversas.</p>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         </div>
     </div>
 </main>
 
-<!-- CSS ATUALIZADO -->
-<style>
-    /* Regras para Imagens e Vídeos com tamanho controlado */
-    .message-bubble img,
-    .message-bubble video {
-        display: block;
-        max-width: 300px;
-        max-height: 250px;
-        width: auto;
-        height: auto;
-        object-fit: cover;
-        border-radius: 8px;
-        margin-top: 5px;
-        cursor: pointer; /* Indica que são clicáveis */
-    }
-
-    /* Opcional: Tamanho ligeiramente maior para vídeos */
-    .message-bubble video {
-        max-width: 350px;
-        max-height: 280px;
-    }
-
-    /* Regras para Áudio (Removido .message-bubble audio, agora é customizado) */
-
-    /* Regras existentes (manter) */
-    .message-content {
-        display: flex;
-        flex-direction: column;
-    }
-    .message-caption {
-        font-size: 0.9em;
-        margin-bottom: 5px;
-    }
-    #file-preview-area .btn-close {
-        vertical-align: middle;
-    }
-
-    /* --- INÍCIO: CSS para Background do Chat --- */
-    .chat-messages {
-        flex-grow: 1;
-        overflow-y: auto;
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        position: relative; /* Necessário para o overlay */
-
-        /* Estilos do Background */
-        background-size: cover; /* Cobre toda a área */
-        background-position: center center; /* Centraliza a imagem */
-        background-repeat: no-repeat; /* Não repete a imagem */
-        background-image: none; /* Começa sem imagem (será definido por JS) */
-    }
-
-    /* Opcional: Overlay para melhorar legibilidade do texto sobre a imagem */
-    .chat-messages::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: transparent; /* <<< ALTERADO: Transparente por padrão */
-        z-index: 1;
-        pointer-events: none;
-        opacity: 0; /* Começa invisível */
-        transition: opacity 0.3s ease, background-color 0.3s ease; /* Adiciona transição para cor */
-    }
-
-    /* Aplica cor e opacidade SOMENTE quando .has-custom-background está presente */
-    .chat-messages.has-custom-background::before {
-        background-color: rgba(255, 255, 255, 0.1); /* Overlay claro padrão */
-        opacity: 1; /* Torna visível */
-    }
-
-    /* Sobrescreve a cor para modo escuro SOMENTE quando AMBOS .dark-mode e .has-custom-background estão presentes */
-    .dark-mode .chat-messages.has-custom-background::before {
-        background-color: rgba(0, 0, 0, 0.3); /* Overlay escuro */
-    }
-
-    /* Garante que as bolhas fiquem acima do overlay */
-    .message-bubble {
-        position: relative;
-        z-index: 2;
-    }
-    /* --- FIM: CSS para Background do Chat --- */
-
-    /* --- INÍCIO: CSS para Opções de Fundo Predefinidas (NO MODAL) --- */
-    /* Removido .dropdown-header.small */
-
-    .predefined-bg-options-modal { /* Classe atualizada */
-        max-width: 100%;
-    }
-
-    .predefined-bg-thumb-modal { /* Classe atualizada */
-        width: 60px; /* Miniaturas um pouco maiores no modal */
-        height: 60px;
-        object-fit: cover;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 3px solid transparent; /* Borda mais grossa para destaque */
-        transition: border-color 0.2s ease, transform 0.1s ease;
-    }
-
-    .predefined-bg-thumb-modal:hover { /* Classe atualizada */
-        border-color: var(--bs-primary);
-        transform: scale(1.05);
-    }
-
-    /* Estilo para o label que funciona como botão de upload */
-    label[for="chat-background-input-modal"] { /* Seletor atualizado */
-        cursor: pointer;
-    }
-    /* --- FIM: CSS para Opções de Fundo Predefinidas (NO MODAL) --- */
-
-
-    /* --- INÍCIO: CSS para Modal Estilo iMessage --- */
-
-    /* Fundo do Modal (Backdrop) - Mais escuro e translúcido */
-    .modal-backdrop.show {
-        opacity: 0.85 !important; /* Aumenta a opacidade do fundo */
-        background-color: #000; /* Garante fundo preto */
-    }
-
-    /* Remove estilos padrão do modal-content quando em fullscreen */
-    #mediaPreviewModal .modal-content { /* ID do modal atualizado */
-        background: transparent !important; /* Fundo totalmente transparente */
-        border: none !important;
-        box-shadow: none !important;
-    }
-
-    /* Container da Mídia - Centraliza */
-    #mediaPreviewModal .modal-media-container { /* Classe do container atualizada */
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-        box-sizing: border-box;
-    }
-
-    /* Imagem ou Vídeo dentro do Modal */
-    #mediaPreviewModal .modal-media-container img,
-    #mediaPreviewModal .modal-media-container video { /* Aplica a ambos */
-        display: block;
-        max-width: 95vw;
-        max-height: 90vh;
-        object-fit: contain;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-    }
-
-    /* Botão Fechar (X) */
-    #mediaPreviewModal .modal-close-button { /* ID do modal atualizado */
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        z-index: 1060;
-        background: rgba(30, 30, 30, 0.6) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        opacity: 0.8;
-        transition: opacity 0.2s ease, background-color 0.2s ease;
-        border: none;
-        padding: 0;
-    }
-    #mediaPreviewModal .modal-close-button:hover { /* ID do modal atualizado */
-        opacity: 1;
-        background-color: rgba(50, 50, 50, 0.8);
-    }
-    #mediaPreviewModal .btn-close { /* ID do modal atualizado */
-        filter: none;
-    }
-
-
-    /* Botão Download (Ícone) - COR ALTERADA */
-    #mediaPreviewModal .modal-download-action { /* ID do modal atualizado */
-        position: absolute;
-        bottom: 25px;
-        right: 25px;
-        z-index: 1060;
-        color: white;
-        background-color: #007AFF; /* Azul estilo iOS/Bootstrap */
-        border-radius: 50%;
-        width: 44px;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        font-size: 1.3rem;
-        opacity: 0.9;
-        transition: opacity 0.2s ease, background-color 0.2s ease;
-        border: none;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    }
-    #mediaPreviewModal .modal-download-action:hover { /* ID do modal atualizado */
-        opacity: 1;
-        background-color: #0056b3; /* Azul um pouco mais escuro no hover */
-        color: white;
-    }
-
-    /* --- FIM: CSS para Modal Estilo iMessage --- */
-
-    /* --- INÍCIO: CSS para Player de Áudio Customizado (Estilo Dribbble) --- */
-
-    .custom-audio-player.waveform-player {
-        display: flex;
-        align-items: center;
-        padding: 8px 15px; /* Menos padding vertical, mais horizontal */
-        border-radius: 8px;  /* MAIS RETANGULAR */
-        max-width: 300px;
-        margin-top: 5px;
-        background-color: #2C2C2E; /* Fundo cinza escuro (iOS/Dribbble) */
-        overflow: hidden;
-        /* Remove dependência das cores da bolha */
-    }
-
-    .waveform-player .play-pause-btn {
-        background-color: #5E5CE6; /* Azul/Roxo do Dribbble */
-        color: white; /* Ícone branco */
-        border: none;
-        border-radius: 50%;
-        width: 34px; /* Ligeiramente maior */
-        height: 34px;
-        font-size: 0.9rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 12px; /* Mais espaço */
-        flex-shrink: 0;
-        transition: transform 0.1s ease, background-color 0.2s ease;
-    }
-    .waveform-player .play-pause-btn:hover {
-        background-color: #4946e0; /* Tom ligeiramente mais escuro no hover */
-    }
-    .waveform-player .play-pause-btn:active {
-        transform: scale(0.9);
-    }
-    .waveform-player .play-pause-btn i {
-        line-height: 1;
-    }
-
-    /* Wrapper para waveform e overlay de progresso */
-    .waveform-player .waveform-wrapper {
-        flex-grow: 1;
-        height: 35px; /* Área da waveform mais alta */
-        margin-right: 12px;
-        position: relative;
-        cursor: pointer;
-        background-color: transparent; /* Wrapper não precisa de fundo */
-    }
-
-    /* Container das barras da waveform */
-    .waveform-player .waveform-container {
-        display: flex;
-        align-items: center; /* Alinha barras verticalmente ao centro */
-        height: 100%;
-        width: 100%;
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
-
-    /* Barras individuais da waveform */
-    .waveform-player .waveform-bar {
-        flex-grow: 1;
-        width: 2.5px; /* Barras ligeiramente mais grossas */
-        margin-right: 1.5px; /* Espaço ligeiramente maior */
-        border-radius: 1.5px;
-        background-color: #8E8E93; /* Cinza claro das barras (iOS/Dribbble) */
-        /* Altura definida por JS */
-    }
-    .waveform-player .waveform-bar:last-child {
-        margin-right: 0;
-    }
-
-    /* Overlay de progresso (cobre as barras) */
-    .waveform-player .waveform-progress-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 100%;
-        width: 0%; /* Começa em 0, atualizado por JS */
-        background-color: #5E5CE6; /* Azul/Roxo do Dribbble para o progresso */
-        /* mix-blend-mode removido para simples sobreposição */
-        opacity: 1; /* Totalmente opaco */
-        pointer-events: none;
-        border-radius: 3px; /* Mantém leve arredondamento */
-    }
-
-    .waveform-player .duration {
-        font-size: 0.8rem;
-        white-space: nowrap;
-        flex-shrink: 0;
-        color: #EBEBF5; /* Texto cinza claro/branco (iOS/Dribbble) */
-        opacity: 0.7; /* Ligeiramente transparente */
-    }
-
-    /* --- FIM: CSS para Player de Áudio Customizado (Estilo Dribbble) --- */
-
-</style>
-
-<!-- *** INÍCIO: HTML DO MODAL ATUALIZADO (para Imagem e Vídeo) *** -->
-<div class="modal fade" id="mediaPreviewModal" tabindex="-1" aria-labelledby="mediaPreviewModalLabel" aria-hidden="true"> <!-- ID alterado -->
+<!-- Modais (Mantidos) -->
+<!-- Modal Media Preview -->
+<div class="modal fade" id="mediaPreviewModal" tabindex="-1" aria-labelledby="mediaPreviewModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-fullscreen">
     <div class="modal-content" style="background: transparent; border: none;">
-        <!-- Botão Fechar (X) -->
         <button type="button" class="btn-close modal-close-button" data-bs-dismiss="modal" aria-label="Close"></button>
-
-        <!-- Container para a Mídia (Imagem ou Vídeo) -->
-        <div class="modal-media-container d-flex align-items-center justify-content-center h-100"> <!-- Classe alterada -->
-            <!-- O elemento img ou video será inserido aqui via JS -->
-        </div>
-
-        <!-- Botão Download (ícone) -->
-        <a href="#" id="modal-download-action" class="modal-download-action" download>
-            <i class="fas fa-download"></i>
-        </a>
+        <div class="modal-media-container d-flex align-items-center justify-content-center h-100"></div>
+        <a href="#" id="modal-download-action" class="modal-download-action" download><i class="fas fa-download"></i></a>
     </div>
   </div>
 </div>
-<!-- *** FIM: HTML DO MODAL ATUALIZADO *** -->
-
-<!-- *** INÍCIO: Modal para Personalização do Fundo *** -->
+<!-- Modal Background Customization -->
 <div class="modal fade" id="backgroundModal" tabindex="-1" aria-labelledby="backgroundModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg"> <!-- Modal maior -->
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="backgroundModalLabel">Personalizar Fundo da Conversa</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <!-- Opção Padrão -->
         <div class="mb-3">
-            <button type="button" class="btn btn-outline-secondary w-100" id="set-default-background-button-modal"> <!-- ID ligeiramente diferente para evitar conflito se o antigo não for removido -->
+            <button type="button" class="btn btn-outline-secondary w-100" id="set-default-background-button-modal">
                 <i class="fas fa-ban fa-fw me-2"></i>Usar Fundo Padrão
             </button>
         </div>
-
         <hr>
-
-        <!-- Opções Predefinidas -->
         <h6 class="text-muted mb-2">Escolha um fundo predefinido:</h6>
-        <div class="predefined-bg-options-modal d-flex flex-wrap gap-2 justify-content-center mb-3"> <!-- Classe diferente -->
-            <!-- AJUSTE OS CAMINHOS ABAIXO PARA AS SUAS IMAGENS REAIS -->
-            <img src="/Projeto_PAP/assets/img/chat_backgrounds/img1.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/img1.png" alt="Fundo 1" title="Fundo 1">
-            <img src="/Projeto_PAP/assets/img/chat_backgrounds/img2.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/img2.png" alt="Fundo 2" title="Fundo 2">
-            <img src="/Projeto_PAP/assets/img/chat_backgrounds/img3.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/img3.png" alt="Padrão Claro" title="Padrão Claro">
-            <img src="/Projeto_PAP/assets/img/chat_backgrounds/img4.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/img4.png" alt="Padrão Escuro" title="Padrão Escuro">
-            <!-- Adicione mais imagens conforme necessário -->
+        <div class="predefined-bg-options-modal d-flex flex-wrap gap-2 justify-content-center mb-3">
+             <img src="/Projeto_PAP/assets/img/chat_backgrounds/whatsapp_default_light.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/whatsapp_default_light.png" alt="Padrão Claro" title="Padrão Claro">
+             <img src="/Projeto_PAP/assets/img/chat_backgrounds/whatsapp_default_dark.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/whatsapp_default_dark.png" alt="Padrão Escuro" title="Padrão Escuro">
+             <img src="/Projeto_PAP/assets/img/chat_backgrounds/img1.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/img1.png" alt="Fundo 1" title="Fundo 1">
+             <img src="/Projeto_PAP/assets/img/chat_backgrounds/img2.png" class="predefined-bg-thumb-modal" data-bg-path="/Projeto_PAP/assets/img/chat_backgrounds/img2.png" alt="Fundo 2" title="Fundo 2">
         </div>
-
         <hr>
-
-        <!-- Opção de Upload -->
         <div class="text-center">
-            <label for="chat-background-input-modal" class="btn btn-primary"> <!-- ID ligeiramente diferente -->
-                <i class="fas fa-upload fa-fw me-2"></i>Carregar Imagem do Computador
+            <label for="chat-background-input-modal" class="btn btn-primary">
+                <i class="fas fa-upload fa-fw me-2"></i>Carregar Imagem
             </label>
-            <!-- Input de ficheiro escondido -->
             <input type="file" id="chat-background-input-modal" accept="image/*" style="display: none;">
         </div>
-
       </div>
-      <!-- Opcional: Footer do Modal -->
-      <!-- <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div> -->
     </div>
   </div>
 </div>
-<!-- *** FIM: Modal para Personalização do Fundo *** -->
 
-
-<!-- JAVASCRIPT ATUALIZADO (Com Logs de Depuração) -->
+<!-- JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Seletores de Elementos (ATUALIZADOS para o Modal de fundo) ---
+    // --- Seletores de Elementos ---
     const chatMessagesContainer = document.getElementById('chat-messages');
-    const chatBackgroundInputModal = document.getElementById('chat-background-input-modal'); // NOVO ID
-    const setDefaultBackgroundButtonModal = document.getElementById('set-default-background-button-modal'); // NOVO ID
-    const predefinedBgOptionsContainerModal = document.querySelector('.predefined-bg-options-modal'); // NOVA CLASSE
     const chatForm = document.getElementById('chat-form');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const receiverIdInput = document.getElementById('receiver_id');
     const attachButton = document.getElementById('attach-button');
-    const fileInput = document.getElementById('file-input'); // Input para anexos da mensagem
+    const fileInput = document.getElementById('file-input');
     const filePreviewArea = document.getElementById('file-preview-area');
     const selectedFileNameSpan = document.getElementById('selected-file-name');
     const removeFileButton = document.getElementById('remove-file-button');
+    const conversationListContainer = document.getElementById('conversation-list');
+    const conversationListColumn = document.getElementById('conversation-list-column');
+
+    // Seletores para personalização
+    const chatBackgroundInputModal = document.getElementById('chat-background-input-modal');
+    const setDefaultBackgroundButtonModal = document.getElementById('set-default-background-button-modal');
+    const predefinedBgOptionsContainerModal = document.querySelector('.predefined-bg-options-modal');
     const sentBgInput = document.getElementById('chatSentBg');
     const sentTextInput = document.getElementById('chatSentText');
     const receivedBgInput = document.getElementById('chatReceivedBg');
     const receivedTextInput = document.getElementById('chatReceivedText');
 
-    // --- Variáveis Globais do Chat ---
+    // --- Variáveis Globais ---
     const currentUserId = <?= json_encode($user_id) ?>;
-    const otherUserId = receiverIdInput ? parseInt(receiverIdInput.value, 10) : null;
+    const activeChatUserId = receiverIdInput ? parseInt(receiverIdInput.value, 10) : null;
     let isFetching = false;
     let pollingInterval;
-    let selectedFile = null; // Para anexos da mensagem
+    let selectedFile = null;
 
     // --- Constantes ---
-    const CHAT_BACKGROUND_KEY = 'chatBackground'; // Chave do localStorage
-    const BASE_IMG_URL = '/Projeto_PAP'; // Ajuste se o projeto não estiver na raiz do localhost
+    const CHAT_BACKGROUND_KEY = 'chatBackground';
+    const CHAT_COLORS_KEY = 'chatColors_whatsapp'; // Chave para cores WhatsApp
+    const PROFILE_PIC_BASE_PATH = 'assets/img/profile_pics/';
+    const DEFAULT_AVATAR_PATH = 'assets/img/avatars/default.png';
+    const BASE_IMG_URL = '/Projeto_PAP';
 
-    // --- Funções do Chat ---
-
-    // Rola a área de mensagens para o final
+    // --- Funções Auxiliares ---
     function scrollToBottom() {
         setTimeout(() => {
             if(chatMessagesContainer) {
@@ -713,27 +960,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
 
-    // Formata a data/hora da mensagem
     function formatTimestamp(sqlTimestamp) {
         try {
             const date = new Date(sqlTimestamp.includes('Z') || sqlTimestamp.includes('+') || sqlTimestamp.includes('-') ? sqlTimestamp : sqlTimestamp.replace(' ', 'T') + 'Z');
-            if (isNaN(date)) {
-                console.warn("Timestamp inválido recebido:", sqlTimestamp);
-                const parts = sqlTimestamp.split(/[- :]/);
-                if (parts.length >= 5) {
-                    const fallbackDate = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4]);
-                    if (!isNaN(fallbackDate)) return fallbackDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                }
-                return sqlTimestamp;
-            }
+            if (isNaN(date)) { return sqlTimestamp; }
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } catch (e) {
-            console.error("Erro ao formatar timestamp:", sqlTimestamp, e);
-            return sqlTimestamp;
-        }
+        } catch (e) { return sqlTimestamp; }
     }
 
-    // *** ATUALIZADO: displayMessages com player de áudio estilo waveform simulada ***
+    // --- Funções de Exibição ---
     function displayMessages(messages) {
         if (!chatMessagesContainer) return;
 
@@ -744,16 +979,34 @@ document.addEventListener('DOMContentLoaded', function() {
         messages.forEach(msg => {
             if (!document.getElementById(`msg-${msg.id}`)) {
                 newMessagesAdded = true;
+                const isSent = parseInt(msg.sender_id, 10) === currentUserId;
+
+                const messageWrapper = document.createElement('div');
+                messageWrapper.classList.add('message-wrapper');
+                messageWrapper.classList.add(isSent ? 'sent-wrapper' : 'received-wrapper');
+
+                if (!isSent) {
+                    const avatarImg = document.createElement('img');
+                    avatarImg.classList.add('message-avatar');
+                    let avatarSrc = DEFAULT_AVATAR_PATH;
+                    if (msg.sender_avatar) {
+                        avatarSrc = PROFILE_PIC_BASE_PATH + msg.sender_avatar;
+                    }
+                    avatarImg.src = avatarSrc;
+                    avatarImg.onerror = function() { this.src = DEFAULT_AVATAR_PATH; };
+                    avatarImg.alt = msg.sender_name || 'Avatar';
+                    messageWrapper.appendChild(avatarImg);
+                }
+
                 const messageDiv = document.createElement('div');
                 messageDiv.id = `msg-${msg.id}`;
                 messageDiv.classList.add('message-bubble');
-                const isSent = parseInt(msg.sender_id, 10) === currentUserId;
                 messageDiv.classList.add(isSent ? 'sent' : 'received');
 
                 const messageContentDiv = document.createElement('div');
                 messageContentDiv.classList.add('message-content');
 
-                // 1. Adiciona Legenda
+                // Legenda (se houver)
                 if (msg.message && msg.message.trim() !== '') {
                     const captionDiv = document.createElement('div');
                     captionDiv.classList.add('message-caption');
@@ -761,82 +1014,41 @@ document.addEventListener('DOMContentLoaded', function() {
                     messageContentDiv.appendChild(captionDiv);
                 }
 
-                // 2. Adiciona Mídia
-                const fileUrlPrefix = ''; // Ajuste se necessário
-
+                // Mídia (Imagem, Áudio, Vídeo)
+                const fileUrlPrefix = '';
                 switch (msg.message_type) {
                     case 'image':
                         const img = document.createElement('img');
                         img.src = fileUrlPrefix + msg.file_url;
                         img.alt = msg.file_name || 'Imagem enviada';
-                        img.style.cursor = 'pointer';
-                        // Chama openMediaModal para imagem
-                        img.addEventListener('click', () => {
-                            openMediaModal('image', fileUrlPrefix + msg.file_url, msg.file_name);
-                        });
+                        img.addEventListener('click', () => openMediaModal('image', fileUrlPrefix + msg.file_url, msg.file_name));
                         messageContentDiv.appendChild(img);
                         break;
-
                     case 'audio':
-                        // --- INÍCIO: Player de Áudio Estilo Waveform Simulado ---
                         const audioPlayerContainer = document.createElement('div');
-                        audioPlayerContainer.classList.add('custom-audio-player', 'waveform-player'); // Nova classe
+                        audioPlayerContainer.classList.add('custom-audio-player', 'waveform-player');
                         audioPlayerContainer.id = `audio-player-${msg.id}`;
-
-                        const audioElement = document.createElement('audio');
-                        audioElement.src = fileUrlPrefix + msg.file_url;
-                        audioElement.preload = 'metadata';
-                        audioElement.id = `audio-element-${msg.id}`;
-                        audioPlayerContainer.appendChild(audioElement);
-
-                        // Botão Play/Pause (igual)
-                        const playPauseButton = document.createElement('button');
-                        playPauseButton.classList.add('play-pause-btn');
-                        playPauseButton.innerHTML = '<i class="fas fa-play"></i>';
-                        playPauseButton.setAttribute('aria-label', 'Play/Pause');
-                        audioPlayerContainer.appendChild(playPauseButton);
-
-                        // Container para a Waveform Simulada e Progresso
-                        const waveformWrapper = document.createElement('div');
-                        waveformWrapper.classList.add('waveform-wrapper');
-                        audioPlayerContainer.appendChild(waveformWrapper);
-
-                        // Container das Barras da Waveform (serão geradas por JS)
-                        const waveformContainer = document.createElement('div');
-                        waveformContainer.classList.add('waveform-container');
-                        waveformWrapper.appendChild(waveformContainer);
-
-                        // Overlay de Progresso (para colorir a parte tocada)
-                        const progressOverlay = document.createElement('div');
-                        progressOverlay.classList.add('waveform-progress-overlay');
-                        waveformWrapper.appendChild(progressOverlay); // Adiciona dentro do wrapper
-
-                        // Duração (igual)
-                        const durationSpan = document.createElement('span');
-                        durationSpan.classList.add('duration');
-                        durationSpan.textContent = '0:00';
-                        audioPlayerContainer.appendChild(durationSpan);
-
+                        audioPlayerContainer.innerHTML = `
+                            <audio id="audio-element-${msg.id}" src="${fileUrlPrefix + msg.file_url}" preload="metadata"></audio>
+                            <button class="play-pause-btn"><i class="fas fa-play"></i></button>
+                            <div class="waveform-wrapper">
+                                <div class="waveform-container"></div>
+                                <div class="waveform-progress-overlay"></div>
+                            </div>
+                            <span class="duration">00:00</span>
+                        `;
                         messageContentDiv.appendChild(audioPlayerContainer);
-
-                        // Chama setup para gerar barras e adicionar lógica
                         setTimeout(() => setupAudioPlayer(msg.id), 0);
-                        // --- FIM: Player de Áudio Estilo Waveform Simulado ---
                         break;
-
                     case 'video':
                         const videoThumb = document.createElement('video');
                         videoThumb.src = fileUrlPrefix + msg.file_url + '#t=0.1';
                         videoThumb.muted = true;
                         videoThumb.preload = 'metadata';
-                        videoThumb.style.cursor = 'pointer';
                         videoThumb.alt = msg.file_name || 'Vídeo enviado';
-                        videoThumb.addEventListener('click', () => {
-                            openMediaModal('video', fileUrlPrefix + msg.file_url, msg.file_name);
-                        });
+                        videoThumb.addEventListener('click', () => openMediaModal('video', fileUrlPrefix + msg.file_url, msg.file_name));
                         messageContentDiv.appendChild(videoThumb);
                         break;
-
                     case 'text':
                     default:
                         if (!msg.file_url && msg.message && messageContentDiv.children.length === 0) {
@@ -849,13 +1061,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 messageDiv.appendChild(messageContentDiv);
 
-                // 3. Adiciona Timestamp
+                // Timestamp
                 const timestampDiv = document.createElement('div');
                 timestampDiv.classList.add('timestamp');
                 timestampDiv.textContent = formatTimestamp(msg.timestamp);
                 messageDiv.appendChild(timestampDiv);
 
-                chatMessagesContainer.appendChild(messageDiv);
+                messageWrapper.appendChild(messageDiv);
+                chatMessagesContainer.appendChild(messageWrapper);
             }
         });
 
@@ -863,227 +1076,149 @@ document.addEventListener('DOMContentLoaded', function() {
             scrollToBottom();
         }
     }
-    // *** FIM: displayMessages ***
 
-    // *** ATUALIZADO: Função genérica para abrir modal de Imagem ou Vídeo ***
     function openMediaModal(mediaType, mediaUrl, fileName) {
-        const modalMediaContainer = document.querySelector('#mediaPreviewModal .modal-media-container'); // Container atualizado
+        const modalMediaContainer = document.querySelector('#mediaPreviewModal .modal-media-container');
         const modalDownloadButton = document.getElementById('modal-download-action');
-        const mediaModalElement = document.getElementById('mediaPreviewModal'); // ID do modal atualizado
-
+        const mediaModalElement = document.getElementById('mediaPreviewModal');
         if (modalMediaContainer && modalDownloadButton && mediaModalElement) {
-            // Limpa o conteúdo anterior do container
             modalMediaContainer.innerHTML = '';
-
             let mediaElement;
-
-            // Cria o elemento apropriado (img ou video)
             if (mediaType === 'image') {
                 mediaElement = document.createElement('img');
-                mediaElement.id = 'modal-image'; // Mantém ID se necessário para CSS específico
-                mediaElement.alt = fileName || 'Imagem Ampliada';
+                mediaElement.style.maxWidth = '90vw'; mediaElement.style.maxHeight = '90vh'; mediaElement.style.objectFit = 'contain';
             } else if (mediaType === 'video') {
                 mediaElement = document.createElement('video');
-                mediaElement.id = 'modal-video'; // ID específico para vídeo
-                mediaElement.controls = true; // Adiciona controlos de vídeo
-                mediaElement.autoplay = true; // Opcional: Inicia a reprodução automaticamente
-                mediaElement.preload = 'auto'; // Carrega o vídeo
-                mediaElement.alt = fileName || 'Vídeo Ampliado';
-            } else {
-                console.error("Tipo de mídia inválido para o modal:", mediaType);
-                return; // Sai se o tipo não for suportado
-            }
-
-            // Define o src e adiciona ao container
+                mediaElement.controls = true; mediaElement.autoplay = true;
+                mediaElement.style.maxWidth = '90vw'; mediaElement.style.maxHeight = '90vh';
+            } else { return; }
             mediaElement.src = mediaUrl;
             modalMediaContainer.appendChild(mediaElement);
-
-            // Configura o botão de download
             modalDownloadButton.href = mediaUrl;
-            modalDownloadButton.download = fileName || (mediaType === 'image' ? 'imagem' : 'video'); // Nome de download padrão
-
-            // Cria e mostra a instância do modal Bootstrap
+            modalDownloadButton.download = fileName || (mediaType === 'image' ? 'imagem' : 'video');
             const mediaModal = new bootstrap.Modal(mediaModalElement);
             mediaModal.show();
-
-            // Opcional: Pausar vídeo quando o modal for fechado
             if (mediaType === 'video') {
-                mediaModalElement.addEventListener('hidden.bs.modal', () => {
-                    if (mediaElement && typeof mediaElement.pause === 'function') { // Verifica se o elemento ainda existe e tem pause
-                        mediaElement.pause();
-                    }
-                }, { once: true }); // Executa o listener apenas uma vez após ser mostrado
+                mediaModalElement.addEventListener('hidden.bs.modal', () => { mediaElement.pause(); }, { once: true });
             }
-
-        } else {
-            console.error("Elementos do modal não encontrados! Verifique IDs: #mediaPreviewModal, .modal-media-container, #modal-download-action");
-        }
+        } else { console.error("Elementos do modal de mídia não encontrados."); }
     }
-    // *** FIM: openMediaModal ***
 
-    // *** ATUALIZADO: Função para configurar player com waveform simulada ***
     function setupAudioPlayer(messageId) {
         const playerContainer = document.getElementById(`audio-player-${messageId}`);
         if (!playerContainer) return;
-
         const audio = playerContainer.querySelector(`#audio-element-${messageId}`);
         const playPauseBtn = playerContainer.querySelector('.play-pause-btn');
-        const waveformWrapper = playerContainer.querySelector('.waveform-wrapper'); // Wrapper
-        const waveformContainer = playerContainer.querySelector('.waveform-container'); // Container das barras
-        const progressOverlay = playerContainer.querySelector('.waveform-progress-overlay'); // Overlay
+        const waveformWrapper = playerContainer.querySelector('.waveform-wrapper');
+        const waveformContainer = playerContainer.querySelector('.waveform-container');
+        const progressOverlay = playerContainer.querySelector('.waveform-progress-overlay');
         const durationSpan = playerContainer.querySelector('.duration');
 
         if (!audio || !playPauseBtn || !waveformWrapper || !waveformContainer || !progressOverlay || !durationSpan) {
-            console.error("Elementos do player de áudio (waveform) não encontrados para msg:", messageId);
+            console.error(`Elementos do player de áudio não encontrados para msg ${messageId}`);
             return;
         }
 
-        const numBars = 40; // Número de barras para simular a waveform
+        const numBars = 40;
+        let isPlaying = false;
+        let animationFrameId;
 
-        // --- Geração das Barras (Executa apenas uma vez por player) ---
-        if (waveformContainer.children.length === 0) { // Gera só se estiver vazio
-            waveformContainer.innerHTML = ''; // Limpa por segurança
+        if (waveformContainer.children.length === 0) {
             for (let i = 0; i < numBars; i++) {
                 const bar = document.createElement('div');
                 bar.classList.add('waveform-bar');
-                // Altura aleatória simples (pode ser melhorada com padrões)
-                const heightPercentage = Math.random() * 70 + 20; // Altura entre 20% e 90%
-                bar.style.height = `${heightPercentage}%`;
+                bar.style.height = `${Math.random() * 80 + 10}%`;
                 waveformContainer.appendChild(bar);
             }
         }
-        // --- Fim da Geração das Barras ---
 
-        // --- Funções internas do player ---
         function formatTime(seconds) {
-            if (isNaN(seconds) || !isFinite(seconds)) return '-:--';
             const minutes = Math.floor(seconds / 60);
             const secs = Math.floor(seconds % 60);
-            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         function updateDurationDisplay() {
-             if (isFinite(audio.duration)) {
+            if (audio.duration && isFinite(audio.duration)) {
                 durationSpan.textContent = formatTime(audio.duration);
             } else {
-                setTimeout(() => {
-                    if (isFinite(audio.duration)) {
-                        durationSpan.textContent = formatTime(audio.duration);
-                    } else {
-                        durationSpan.textContent = '-:--';
-                    }
-                }, 200);
-            }
-        }
-
-        function togglePlayPause() {
-            if (audio.paused || audio.ended) {
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.error("Erro ao tocar áudio:", error);
-                        updatePlayPauseIcon();
-                    });
-                }
-            } else {
-                audio.pause();
+                 durationSpan.textContent = '00:00';
             }
         }
 
         function updatePlayPauseIcon() {
-            const icon = playPauseBtn.querySelector('i');
-            if (!icon) return;
-            if (audio.paused || audio.ended) {
-                icon.classList.remove('fa-pause');
-                icon.classList.add('fa-play');
-            } else {
-                icon.classList.remove('fa-play');
-                icon.classList.add('fa-pause');
-            }
+            playPauseBtn.innerHTML = isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
         }
 
-        // --- ATUALIZADO: updateProgress para controlar o overlay ---
         function updateProgress() {
-            if (isFinite(audio.duration) && audio.duration > 0) {
-                const percentage = (audio.currentTime / audio.duration) * 100;
-                progressOverlay.style.width = `${percentage}%`; // Atualiza largura do overlay
+            if (!audio.duration) return;
+            const progress = (audio.currentTime / audio.duration) * 100;
+            progressOverlay.style.width = `${progress}%`;
+            animationFrameId = requestAnimationFrame(updateProgress);
+        }
+
+        function togglePlayPause() {
+            if (isPlaying) {
+                audio.pause();
+                cancelAnimationFrame(animationFrameId);
             } else {
-                 progressOverlay.style.width = '0%'; // Reseta overlay
+                audio.play().catch(e => console.error("Erro ao tocar áudio:", e));
+                requestAnimationFrame(updateProgress);
             }
-        }
-
-        // --- ATUALIZADO: seek para usar o wrapper ---
-        function seek(event) {
-             if (!isFinite(audio.duration) || audio.duration <= 0) return;
-
-            const wrapperRect = waveformWrapper.getBoundingClientRect(); // Usa o wrapper
-            if (wrapperRect.width === 0) return;
-
-            const clickPosition = event.clientX - wrapperRect.left;
-            const percentage = Math.max(0, Math.min(1, clickPosition / wrapperRect.width));
-            const seekTime = percentage * audio.duration;
-
-            audio.currentTime = seekTime;
-            updateProgress(); // Atualiza imediatamente o overlay após seek
-        }
-
-        // --- Adiciona Event Listeners ---
-        audio.addEventListener('loadedmetadata', updateDurationDisplay);
-        if (audio.readyState >= 1) { updateDurationDisplay(); }
-        else { audio.addEventListener('canplay', updateDurationDisplay, { once: true }); }
-
-        playPauseBtn.addEventListener('click', togglePlayPause);
-        audio.addEventListener('play', updatePlayPauseIcon);
-        audio.addEventListener('pause', updatePlayPauseIcon);
-        audio.addEventListener('ended', () => {
+            isPlaying = !isPlaying;
             updatePlayPauseIcon();
-            progressOverlay.style.width = '0%'; // Reseta overlay no final
+        }
+
+        function seek(event) {
+            if (!audio.duration) return;
+            const waveformRect = waveformWrapper.getBoundingClientRect();
+            const clickX = event.clientX - waveformRect.left;
+            const percentage = clickX / waveformRect.width;
+            audio.currentTime = audio.duration * percentage;
+            progressOverlay.style.width = `${percentage * 100}%`;
+        }
+
+        audio.addEventListener('loadedmetadata', updateDurationDisplay);
+        audio.addEventListener('ended', () => {
+            isPlaying = false;
+            updatePlayPauseIcon();
+            cancelAnimationFrame(animationFrameId);
+            progressOverlay.style.width = '0%';
             audio.currentTime = 0;
         });
-        audio.addEventListener('timeupdate', updateProgress);
-        waveformWrapper.addEventListener('click', seek); // Listener de seek no wrapper
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        waveformWrapper.addEventListener('click', seek);
 
+        updateDurationDisplay();
     }
-    // *** FIM: setupAudioPlayer ***
 
-    // Busca novas mensagens
+    // --- Funções de Comunicação ---
     async function fetchNewMessages() {
-        if (!otherUserId || isFetching) return;
+        if (!activeChatUserId || isFetching) return;
         isFetching = true;
         try {
-            const response = await fetch(`fetch_messages.php?other_user_id=${otherUserId}`);
-            if (!response.ok) {
-                console.error('Erro de rede ao buscar mensagens:', response.status, response.statusText);
-                return;
-            }
+            const response = await fetch(`fetch_messages.php?other_user_id=${activeChatUserId}`);
+            if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
             const data = await response.json();
             if (data.status === 'success') {
                 displayMessages(data.messages);
-            } else {
-                console.error('Erro ao buscar mensagens (servidor):', data.message);
-            }
-        } catch (error) {
-            console.error('Erro na requisição fetch (fetchNewMessages):', error);
-        } finally {
-            isFetching = false;
-        }
+            } else { console.error('Erro ao buscar mensagens (servidor):', data.message); }
+        } catch (error) { console.error('Erro fetch (fetchNewMessages):', error); }
+        finally { isFetching = false; }
     }
 
-    // Envia mensagem
     async function sendMessage(event) {
         event.preventDefault();
-        if (!otherUserId || !messageInput || !sendButton) return;
-
+        if (!activeChatUserId || !messageInput || !sendButton) return;
         const messageText = messageInput.value.trim();
         if (messageText === '' && !selectedFile) return;
 
-        messageInput.disabled = true;
-        sendButton.disabled = true;
+        messageInput.disabled = true; sendButton.disabled = true;
         if(attachButton) attachButton.disabled = true;
-        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
         const formData = new FormData();
-        formData.append('receiver_id', otherUserId);
+        formData.append('receiver_id', activeChatUserId);
         formData.append('message', messageText);
         if (selectedFile) {
             formData.append('chat_file', selectedFile, selectedFile.name);
@@ -1092,250 +1227,191 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch('send_message.php', { method: 'POST', body: formData });
             const data = await response.json();
-
             if (data.status === 'success') {
                 messageInput.value = '';
                 clearSelectedFile();
+                await fetchNewMessages();
+                scrollToBottom();
             } else {
-                console.error('Erro ao enviar mensagem (servidor):', data.message);
-                alert('Erro ao enviar mensagem: ' + data.message);
-                messageInput.disabled = false;
-                sendButton.disabled = false;
-                if(attachButton) attachButton.disabled = false;
-                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
+                console.error('Erro ao enviar (servidor):', data.message);
+                alert('Erro: ' + data.message);
             }
         } catch (error) {
-            console.error('Erro na requisição fetch (sendMessage):', error);
-            alert('Erro de rede ao enviar mensagem. Tente novamente.');
-            messageInput.disabled = false;
-            sendButton.disabled = false;
-            if(attachButton) attachButton.disabled = false;
-            sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
+            console.error('Erro fetch (sendMessage):', error);
+            alert('Erro de rede. Tente novamente.');
         } finally {
-            if (messageInput.disabled) { // Reabilita se não caiu em erro
-                 messageInput.disabled = false;
-                 sendButton.disabled = false;
-                 if(attachButton) attachButton.disabled = false;
-                 sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
-            }
+            messageInput.disabled = false; sendButton.disabled = false;
+            if(attachButton) attachButton.disabled = false;
+            sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
             messageInput.focus();
-            await fetchNewMessages();
-            scrollToBottom(); // Força scroll após enviar
         }
     }
 
-    // --- Funções para Ficheiros (Anexos da Mensagem) ---
-    function showSelectedFile(file) {
-        if (file && filePreviewArea && selectedFileNameSpan) {
-            selectedFile = file;
-            selectedFileNameSpan.textContent = file.name;
-            filePreviewArea.style.display = 'block';
-            messageInput.placeholder = "Adicione uma legenda (opcional)...";
-        }
-    }
-    function clearSelectedFile() {
-        selectedFile = null;
-        if (fileInput) fileInput.value = ''; // Limpa o input de anexos da mensagem
-        if (filePreviewArea) filePreviewArea.style.display = 'none';
-        if (selectedFileNameSpan) selectedFileNameSpan.textContent = '';
-        if (messageInput) messageInput.placeholder = "Digite sua mensagem ou legenda...";
-    }
-    if (attachButton && fileInput) {
-        attachButton.addEventListener('click', () => { fileInput.click(); });
-    }
-    if (fileInput) {
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const maxSizeMB = 50;
-                if (file.size > maxSizeMB * 1024 * 1024) {
-                    alert(`O ficheiro é muito grande (máx ${maxSizeMB}MB).`);
-                    clearSelectedFile(); return;
-                }
-                showSelectedFile(file);
-            } else { clearSelectedFile(); }
-        });
-    }
-    if (removeFileButton) {
-        removeFileButton.addEventListener('click', clearSelectedFile);
-    }
+    // --- Funções para Anexos (Mantidas) ---
+    function showSelectedFile(file) { if (!file) return; selectedFile = file; if (selectedFileNameSpan) selectedFileNameSpan.textContent = file.name; if (filePreviewArea) filePreviewArea.style.display = 'block'; if (messageInput) messageInput.placeholder = "Legenda (opcional)..."; }
+    function clearSelectedFile() { selectedFile = null; if (fileInput) fileInput.value = ''; if (filePreviewArea) filePreviewArea.style.display = 'none'; if (selectedFileNameSpan) selectedFileNameSpan.textContent = ''; if (messageInput) messageInput.placeholder = "Digite sua mensagem..."; }
+    if (attachButton && fileInput) { attachButton.addEventListener('click', () => fileInput.click()); }
+    if (fileInput) { fileInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (file) { showSelectedFile(file); } else { clearSelectedFile(); } }); }
+    if (removeFileButton) { removeFileButton.addEventListener('click', clearSelectedFile); }
 
-    // --- Funções de Personalização de Cores (sem alterações) ---
+    // --- Funções de Personalização (Adaptadas para novas variáveis CSS e chave localStorage) ---
     window.updateChatColor = function(variableName, colorValue) {
         document.documentElement.style.setProperty(variableName, colorValue);
-        const savedColors = JSON.parse(localStorage.getItem('chatColors') || '{}');
-        const keyMap = {'--chat-sent-bg': 'sentBg', '--chat-sent-text': 'sentText', '--chat-received-bg': 'receivedBg', '--chat-received-text': 'receivedText'};
+        const savedColors = JSON.parse(localStorage.getItem(CHAT_COLORS_KEY) || '{}');
+        // Mapeia para chaves de armazenamento
+        const keyMap = {
+            '--chat-sent-bg-whatsapp': 'sentBg', '--chat-sent-text-whatsapp': 'sentText',
+            '--chat-received-bg-whatsapp': 'receivedBg', '--chat-received-text-whatsapp': 'receivedText'
+        };
         const storageKey = keyMap[variableName];
-        if (storageKey) { savedColors[storageKey] = colorValue; localStorage.setItem('chatColors', JSON.stringify(savedColors)); }
+        if (storageKey) {
+            savedColors[storageKey] = colorValue;
+            localStorage.setItem(CHAT_COLORS_KEY, JSON.stringify(savedColors));
+        }
     }
+
     window.resetChatColors = function() {
         const root = document.documentElement;
-        const defaultColors = { sentBg: '#0B93F6', sentText: '#FFFFFF', receivedBg: '#E5E5EA', receivedText: '#000000' };
-        root.style.setProperty('--chat-sent-bg', defaultColors.sentBg); root.style.setProperty('--chat-sent-text', defaultColors.sentText);
-        root.style.setProperty('--chat-received-bg', defaultColors.receivedBg); root.style.setProperty('--chat-received-text', defaultColors.receivedText);
-        if (sentBgInput) sentBgInput.value = defaultColors.sentBg; if (sentTextInput) sentTextInput.value = defaultColors.sentText;
-        if (receivedBgInput) receivedBgInput.value = defaultColors.receivedBg; if (receivedTextInput) receivedTextInput.value = defaultColors.receivedText;
-        localStorage.removeItem('chatColors'); console.log('Chat colors reset to defaults.');
+        // *** ALTERADO: Cores padrão com Azul para Enviadas ***
+        const defaultColors = { sentBg: '#DBEAFE', sentText: '#1E40AF', receivedBg: '#FFFFFF', receivedText: '#1F2937' };
+        const defaultColorsDark = { sentBg: '#2563EB', sentText: '#E0E7FF', receivedBg: '#202C33', receivedText: '#E1E2E5' };
+
+        const currentDefaults = document.body.classList.contains('dark-mode') ? defaultColorsDark : defaultColors;
+
+        root.style.setProperty('--chat-sent-bg-whatsapp', currentDefaults.sentBg);
+        root.style.setProperty('--chat-sent-text-whatsapp', currentDefaults.sentText);
+        root.style.setProperty('--chat-received-bg-whatsapp', currentDefaults.receivedBg);
+        root.style.setProperty('--chat-received-text-whatsapp', currentDefaults.receivedText);
+
+        // Atualiza pickers
+        if (sentBgInput) sentBgInput.value = currentDefaults.sentBg;
+        if (sentTextInput) sentTextInput.value = currentDefaults.sentText;
+        if (receivedBgInput) receivedBgInput.value = currentDefaults.receivedBg;
+        if (receivedTextInput) receivedTextInput.value = currentDefaults.receivedText;
+        localStorage.removeItem(CHAT_COLORS_KEY);
     }
+
     function loadInitialColorPickerValues() {
-        const savedColors = JSON.parse(localStorage.getItem('chatColors') || '{}');
+        const savedColors = JSON.parse(localStorage.getItem(CHAT_COLORS_KEY) || '{}');
         const rootStyles = getComputedStyle(document.documentElement);
-        const defaultSentBg = rootStyles.getPropertyValue('--chat-sent-bg').trim() || '#0B93F6'; const defaultSentText = rootStyles.getPropertyValue('--chat-sent-text').trim() || '#FFFFFF';
-        const defaultReceivedBg = rootStyles.getPropertyValue('--chat-received-bg').trim() || '#E5E5EA'; const defaultReceivedText = rootStyles.getPropertyValue('--chat-received-text').trim() || '#000000';
-        if (sentBgInput) sentBgInput.value = savedColors.sentBg || defaultSentBg; if (sentTextInput) sentTextInput.value = savedColors.sentText || defaultSentText;
-        if (receivedBgInput) receivedBgInput.value = savedColors.receivedBg || defaultReceivedBg; if (receivedTextInput) receivedTextInput.value = savedColors.receivedText || defaultReceivedText;
+        const isDarkMode = document.body.classList.contains('dark-mode');
+
+        // *** ALTERADO: Pega padrões com Azul para Enviadas ou do CSS atual ***
+        const defaultSentBg = rootStyles.getPropertyValue('--chat-sent-bg-whatsapp').trim() || (isDarkMode ? '#2563EB' : '#DBEAFE');
+        const defaultSentText = rootStyles.getPropertyValue('--chat-sent-text-whatsapp').trim() || (isDarkMode ? '#E0E7FF' : '#1E40AF');
+        const defaultReceivedBg = rootStyles.getPropertyValue('--chat-received-bg-whatsapp').trim() || (isDarkMode ? '#202C33' : '#FFFFFF');
+        const defaultReceivedText = rootStyles.getPropertyValue('--chat-received-text-whatsapp').trim() || (isDarkMode ? '#E1E2E5' : '#1F2937');
+
+        // Define valores iniciais dos pickers e aplica estilos
+        if (sentBgInput) sentBgInput.value = savedColors.sentBg || defaultSentBg; updateChatColor('--chat-sent-bg-whatsapp', savedColors.sentBg || defaultSentBg);
+        if (sentTextInput) sentTextInput.value = savedColors.sentText || defaultSentText; updateChatColor('--chat-sent-text-whatsapp', savedColors.sentText || defaultSentText);
+        if (receivedBgInput) receivedBgInput.value = savedColors.receivedBg || defaultReceivedBg; updateChatColor('--chat-received-bg-whatsapp', savedColors.receivedBg || defaultReceivedBg);
+        if (receivedTextInput) receivedTextInput.value = savedColors.receivedText || defaultReceivedText; updateChatColor('--chat-received-text-whatsapp', savedColors.receivedText || defaultReceivedText);
     }
 
-    // --- LÓGICA ATUALIZADA: Background do Chat (usando elementos do Modal) ---
-
-    // Função para aplicar o background (ATUALIZADA com console.log)
+    // --- Lógica de Background (Ajustada para funcionar com CSS) ---
     function applyChatBackground(value) {
-        console.log("[applyChatBackground] Valor recebido:", value); // DEBUG
-        if (!chatMessagesContainer) {
-            console.error("[applyChatBackground] Erro: Container #chat-messages não encontrado.");
-            return;
-        }
-
+        if (!chatMessagesContainer) return;
         let imageUrl = null;
-        let backgroundStyle = 'none'; // Estilo padrão (sem imagem)
-        let hasCustomBgClass = false;
 
-        if (value && value !== 'none') {
-            if (value.startsWith('data:image/')) {
-                // Data URL (upload)
-                imageUrl = value;
-                console.log("[applyChatBackground] Tipo: Data URL");
-            } else if (value.startsWith('/')) {
-                // Caminho absoluto da raiz do site (predefinido)
-                imageUrl = value;
-                console.log("[applyChatBackground] Tipo: Caminho URL");
-            } else {
-                console.warn("[applyChatBackground] Tipo de valor não reconhecido:", value);
-            }
-        } else {
-             console.log("[applyChatBackground] Tipo: Nenhum (removendo fundo)");
+        if (value && value !== 'none') { // Se há um valor guardado (personalizado)
+            if (value.startsWith('data:image/')) { imageUrl = value; }
+            else if (value.startsWith('/')) { imageUrl = value; } // Caminho de imagem predefinida
         }
 
-        // Monta o estilo CSS apenas se houver uma URL válida
-        if (imageUrl) {
-            // IMPORTANTE: Garantir que as aspas estão corretas dentro de url()
-            backgroundStyle = `url('${imageUrl.replace(/'/g, "\\'")}')`; // Escapa aspas simples no nome do ficheiro, se houver
-            hasCustomBgClass = true;
-            console.log("[applyChatBackground] Definindo estilo:", backgroundStyle);
-        } else {
-            console.log("[applyChatBackground] Removendo estilo de fundo.");
-        }
-
-        // Aplica o estilo ao container
-        chatMessagesContainer.style.backgroundImage = backgroundStyle;
-
-        // Adiciona/Remove a classe para o overlay
-        if (hasCustomBgClass) {
+        if (imageUrl) { // Se temos uma imagem personalizada (base64 ou caminho)
+            chatMessagesContainer.style.backgroundImage = `url('${imageUrl.replace(/'/g, "\\'")}')`;
             chatMessagesContainer.classList.add('has-custom-background');
-        } else {
+        } else { // Se não há imagem personalizada (value é null, undefined ou 'none') -> Aplicar padrão via CSS
+            chatMessagesContainer.style.backgroundImage = ''; // Limpa o estilo inline, CSS assume
             chatMessagesContainer.classList.remove('has-custom-background');
         }
     }
-
-
-    // Carrega o background salvo ao iniciar (INALTERADO)
     const savedBackground = localStorage.getItem(CHAT_BACKGROUND_KEY);
-    applyChatBackground(savedBackground);
+    applyChatBackground(savedBackground); // Aplica na carga inicial
 
-    // Listener para o botão "Padrão" (NO MODAL)
-    if (setDefaultBackgroundButtonModal) { // Seletor atualizado
+    if (setDefaultBackgroundButtonModal) {
         setDefaultBackgroundButtonModal.addEventListener('click', function() {
             localStorage.removeItem(CHAT_BACKGROUND_KEY);
-            applyChatBackground(null);
-            // Opcional: Fechar o modal após a seleção
-            const modalElement = document.getElementById('backgroundModal');
-            if (modalElement) {
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) modal.hide();
-            }
+            applyChatBackground(null); // Aplica o padrão correto (light/dark)
+            const modal = bootstrap.Modal.getInstance(document.getElementById('backgroundModal'));
+            if(modal) modal.hide();
         });
     }
-
-    // Listener para as miniaturas predefinidas (NO MODAL - ATUALIZADO com console.log)
-    if (predefinedBgOptionsContainerModal) { // Seletor atualizado
+    if (predefinedBgOptionsContainerModal) {
         predefinedBgOptionsContainerModal.addEventListener('click', function(event) {
-            console.log("Click detected inside predefined options container."); // DEBUG
-            // Verifica se o clique foi numa imagem thumbnail DENTRO DO MODAL
-            if (event.target.classList.contains('predefined-bg-thumb-modal')) { // Classe atualizada
-                console.log("Clicked element IS a thumbnail:", event.target); // DEBUG
-                const imagePath = event.target.dataset.bgPath; // Pega o caminho da imagem real
-                console.log("Attempting to get data-bg-path:", imagePath); // DEBUG
+            if (event.target.classList.contains('predefined-bg-thumb-modal')) {
+                const imagePath = event.target.dataset.bgPath;
                 if (imagePath) {
-                    localStorage.setItem(CHAT_BACKGROUND_KEY, imagePath); // Salva o caminho
-                    console.log("Saved to localStorage:", imagePath); // DEBUG
-                    applyChatBackground(imagePath); // Aplica
-                    // Opcional: Fechar o modal após a seleção
-                    const modalElement = document.getElementById('backgroundModal');
-                    if (modalElement) {
-                        const modal = bootstrap.Modal.getInstance(modalElement);
-                        if (modal) modal.hide();
-                    }
-                } else {
-                     console.error("data-bg-path attribute is missing or empty on clicked thumbnail!"); // DEBUG
+                    localStorage.setItem(CHAT_BACKGROUND_KEY, imagePath);
+                    applyChatBackground(imagePath);
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('backgroundModal'));
+                    if(modal) modal.hide();
                 }
-            } else {
-                 console.log("Clicked element is NOT a thumbnail:", event.target); // DEBUG
             }
         });
     }
-
-
-    // Listener para o input de ficheiro do background (NO MODAL - INALTERADO)
-    if (chatBackgroundInputModal) { // Seletor atualizado
+    if (chatBackgroundInputModal) {
         chatBackgroundInputModal.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file && file.type.startsWith('image/')) {
-                const maxSizeMB = 2;
-                if (file.size > maxSizeMB * 1024 * 1024) {
-                    alert(`A imagem é muito grande (máx ${maxSizeMB}MB). Escolha uma menor.`);
-                    chatBackgroundInputModal.value = ''; // Limpa o input do modal
-                    return;
-                }
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const imageUrl = e.target.result;
                     localStorage.setItem(CHAT_BACKGROUND_KEY, imageUrl);
                     applyChatBackground(imageUrl);
-                     // Opcional: Fechar o modal após a seleção
-                    const modalElement = document.getElementById('backgroundModal');
-                    if (modalElement) {
-                        const modal = bootstrap.Modal.getInstance(modalElement);
-                        if (modal) modal.hide();
-                    }
-                }
-                reader.onerror = function(e) {
-                    console.error("Erro ao ler o ficheiro:", e);
-                    alert("Ocorreu um erro ao processar a imagem.");
-                }
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('backgroundModal'));
+                    if(modal) modal.hide();
+                };
                 reader.readAsDataURL(file);
-                chatBackgroundInputModal.value = ''; // Limpa o input do modal
+                chatBackgroundInputModal.value = '';
             } else if (file) {
-                alert("Por favor, selecione um ficheiro de imagem válido.");
-                chatBackgroundInputModal.value = ''; // Limpa o input do modal
+                alert("Imagem inválida.");
+                chatBackgroundInputModal.value = '';
             }
         });
     }
+     // Reaplica fundo padrão ao mudar tema (light/dark)
+    const themeToggleButton = document.getElementById('theme-toggle-button'); // Assumindo que seu botão de tema tem este ID
+    if (themeToggleButton) {
+        themeToggleButton.addEventListener('click', () => {
+            // Espera um pouco para a classe .dark-mode ser aplicada/removida
+            setTimeout(() => {
+                const currentSavedBg = localStorage.getItem(CHAT_BACKGROUND_KEY);
+                applyChatBackground(currentSavedBg); // Reaplica (usará o padrão correto se currentSavedBg for null)
+                loadInitialColorPickerValues(); // Recarrega cores para o novo tema
+            }, 50);
+        });
+    }
 
-    // --- FIM: LÓGICA ATUALIZADA: Background do Chat ---
 
+    // --- Função para Toggle da Lista (Mobile) ---
+    window.toggleConversationList = function(open) { if (conversationListColumn) { if (open) { conversationListColumn.classList.add('open'); } else { conversationListColumn.classList.remove('open'); } } }
 
     // --- Inicialização ---
-    loadInitialColorPickerValues(); // Carrega cores personalizadas
-    // Carregamento do background já está acima
+    loadInitialColorPickerValues(); // Carrega cores
 
-    if (otherUserId && chatMessagesContainer) {
+    if (activeChatUserId && chatMessagesContainer) {
+        chatMessagesContainer.innerHTML = '';
         fetchNewMessages().then(() => { scrollToBottom(); });
         pollingInterval = setInterval(fetchNewMessages, 5000);
         if(chatForm) { chatForm.addEventListener('submit', sendMessage); }
     } else {
-        if(messageInput) messageInput.disabled = true; if(sendButton) sendButton.disabled = true; if(attachButton) attachButton.disabled = true;
+        if(messageInput) messageInput.disabled = true;
+        if(sendButton) sendButton.disabled = true;
+        if(attachButton) attachButton.disabled = true;
     }
+
     window.addEventListener('beforeunload', () => { if (pollingInterval) { clearInterval(pollingInterval); } });
+
+    document.addEventListener('click', function(event) {
+        if (conversationListColumn && conversationListColumn.classList.contains('open')) {
+            const isClickInsideList = conversationListColumn.contains(event.target);
+            const isMenuButton = event.target.closest('.menu-toggle-btn');
+            if (!isClickInsideList && !isMenuButton) { toggleConversationList(false); }
+        }
+    });
+
 });
 </script>
 

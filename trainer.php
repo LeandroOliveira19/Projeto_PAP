@@ -23,68 +23,7 @@ $active_page = basename($_SERVER['PHP_SELF']); // Pega o nome do arquivo atual (
 
 <!-- A classe dashboard-body já está no <body> incluído pelo header.php -->
 
-<!-- Sidebar -->
-<aside class="sidebar">
-    <div class="sidebar-header">
-        <!-- Pode ser um texto ou uma imagem -->
-        <a href="trainer.php" class="logo">MyWellness - Trainer</a>
-        <!-- <img src="assets/img/logo-light.png" alt="Logo" style="max-width: 150px;"> -->
-    </div>
-    <nav> <!-- Usar <nav> semanticamente -->
-        <ul class="sidebar-nav">
-            <li>
-                <!-- Link para a página principal do treinador -->
-                <a href="trainer.php" class="<?= ($active_page == 'trainer.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-tachometer-alt fa-fw"></i>
-                    <span>Painel Principal</span>
-                </a>
-            </li>
-            <li>
-                <!-- Link para adicionar plano de treino -->
-                <a href="add_workout_plan.php" class="<?= ($active_page == 'add_workout_plan.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-plus-square fa-fw"></i>
-                    <span>Adicionar Plano</span>
-                </a>
-            </li>
-            <li>
-                <!-- Link para histórico de clientes (planos inativos) -->
-                <a href="client_history.php" class="<?= ($active_page == 'client_history.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-history fa-fw"></i>
-                    <span>Histórico Clientes</span>
-                </a>
-            </li>
-            <!-- Adicionar link para Perfil se existir para trainers -->
-            <li>
-                <a href="profile.php" class="<?= ($active_page == 'profile.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-user fa-fw"></i>
-                    <span>Perfil</span>
-                </a>
-            </li>
-            <!-- Adicionar link para Chat se existir para trainers -->
-             <li>
-                <a href="chat.php" class="<?= ($active_page == 'chat.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-comments fa-fw"></i>
-                    <span>Chat</span>
-                </a>
-            </li>
-            <!-- Adicione mais links específicos do treinador conforme necessário -->
-            <!-- Exemplo: Gerir Exercícios (se aplicável)
-            <li>
-                <a href="manage_exercises.php" class="<?= ($active_page == 'manage_exercises.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-cogs fa-fw"></i>
-                    <span>Gerir Exercícios</span>
-                </a>
-            </li>
-             -->
-        </ul>
-    </nav>
-     <div class="sidebar-footer">
-         <a href="logout.php">
-            <i class="fas fa-sign-out-alt fa-fw"></i>
-            <span>Sair</span>
-        </a>
-    </div>
-</aside>
+<?php include 'sidebar_trainer.php'; ?>
 
 <!-- Conteúdo Principal -->
 <main class="main-content">
@@ -93,8 +32,6 @@ $active_page = basename($_SERVER['PHP_SELF']); // Pega o nome do arquivo atual (
         <div class="row">
             <div class="col-md-12">
                 <h4>Clientes Ativos e Planos de Treino</h4>
-                <a href="add_workout_plan.php" class="btn btn-success mb-3">Adicionar Plano de Treino</a>
-                <a href="client_history.php" class="btn btn-info mb-3">Ver Histórico de Clientes</a>
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead>
@@ -131,7 +68,7 @@ $active_page = basename($_SERVER['PHP_SELF']); // Pega o nome do arquivo atual (
                                     echo "<tr>";
                                     echo "<td class='align-top'>" . htmlspecialchars($client['client_name']) . "</td>";
 
-                                    // --- Coluna Plano de Treino ---
+                                    // --- Coluna Plano de Treino (SEU CÓDIGO EXISTENTE) ---
                                     echo "<td class='align-top'>";
                                     if ($client['workout_plan_id']) {
                                         $plan_details_id = "plan-details-" . $client['client_id']; // Unique ID for collapse
@@ -171,8 +108,10 @@ $active_page = basename($_SERVER['PHP_SELF']); // Pega o nome do arquivo atual (
                                         echo "<span class='text-muted'>Nenhum plano ativo cadastrado</span>";
                                     }
                                     echo "</td>";
+                                    // --- FIM Coluna Plano de Treino ---
 
-                                    // --- Coluna Exercícios ---
+
+                                    // --- Coluna Exercícios (SEU CÓDIGO EXISTENTE) ---
                                     echo "<td class='align-top'>";
                                     if ($client['workout_plan_id']) {
                                         $stmt_exercises = $pdo->prepare("
@@ -209,24 +148,31 @@ $active_page = basename($_SERVER['PHP_SELF']); // Pega o nome do arquivo atual (
                                         echo "<span class='text-muted small'>N/A (sem plano ativo)</span>";
                                     }
                                     echo "</td>";
+                                    // --- FIM Coluna Exercícios ---
 
-                                    // --- Coluna Ações ---
-                                    echo "<td class='align-top'>";
+
+                                    // --- Coluna Ações (COM O NOVO BOTÃO INTEGRADO) ---
+                                    echo "<td class='align-top text-center'>"; // Adicionado text-center para alinhar os botões
+
+                                    // Botão Editar/Criar Plano
                                     if ($client['workout_plan_id']) {
-                                        // Link para editar o plano ativo existente
-                                        echo "<a href='edit_workout_plan.php?client_id=" . $client['client_id'] . "&workout_plan_id=" . $client['workout_plan_id'] . "' class='btn btn-warning btn-sm mb-1 d-block'>Editar Plano</a>";
+                                        echo "<a href='edit_workout_plan.php?client_id=" . $client['client_id'] . "&workout_plan_id=" . $client['workout_plan_id'] . "' class='btn btn-warning btn-sm mb-1 d-block text-nowrap' title='Editar Plano de Treino'><i class='fas fa-edit me-1'></i> <span class='d-none d-md-inline'>Editar Plano</span></a>";
                                     } else {
-                                        // ***** MODIFICAÇÃO 3: Adicionar client_id ao link Criar Plano *****
-                                        // Link para adicionar um *novo* plano (passando client_id pode ser útil em add_workout_plan.php)
-                                        echo "<a href='add_workout_plan.php?client_id=" . $client['client_id'] . "' class='btn btn-primary btn-sm mb-1 d-block'>Criar Plano</a>";
-                                        // *****************************************************************
+                                        echo "<a href='add_workout_plan.php?client_id=" . $client['client_id'] . "' class='btn btn-primary btn-sm mb-1 d-block text-nowrap' title='Criar Plano de Treino'><i class='fas fa-plus me-1'></i> <span class='d-none d-md-inline'>Criar Plano</span></a>";
                                     }
 
-                                    // Verifica se client_user_id existe (deve existir por causa da query modificada)
+                                    // *** NOVO BOTÃO AVALIAÇÃO ADICIONADO AQUI ***
+                                    echo "<a href='edit_client_assessment.php?client_id=" . $client['client_id'] . "' class='btn btn-info btn-sm mb-1 d-block text-nowrap' title='Editar Avaliação Física'><i class='fas fa-clipboard-list me-1'></i> <span class='d-none d-md-inline'>Avaliação</span></a>";
+                                    // ********************************************
+
+                                    // Botão Chat
                                     if (isset($client['client_user_id'])) {
-                                        echo "<a href='chat.php?user_id=" . $client['client_user_id'] . "' class='btn btn-info btn-sm mb-1 d-block'><i class='fas fa-comments'></i> Chat</a>";
+                                        echo "<a href='chat.php?user_id=" . $client['client_user_id'] . "' class='btn btn-success btn-sm mb-1 d-block text-nowrap' title='Conversar com Cliente'><i class='fas fa-comments me-1'></i> <span class='d-none d-md-inline'>Chat</span></a>";
                                     }
+
                                     echo "</td>";
+                                    // --- FIM Coluna Ações ---
+
                                     echo "</tr>";
                                 }
                             } else {

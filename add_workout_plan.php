@@ -13,6 +13,12 @@ include 'db.php';
 // Inclui o cabeçalho da página
 include 'header.php';
 
+// *** ADICIONADO: Define a página ativa para a sidebar ***
+$active_page = basename($_SERVER['PHP_SELF']); // Será 'add_workout_plan.php'
+
+// *** ADICIONADO: Inclui a sidebar do trainer ***
+include 'sidebar_trainer.php';
+
 // Processa o formulário de adicionar plano de treino
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $client_id = $_POST['client_id'];
@@ -52,119 +58,123 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="container mt-5">
-    <h2>Adicionar Plano de Treino</h2>
-    <form method="POST">
-        <div class="form-group mb-3">
-            <label for="client_id">Cliente</label>
-            <select class="form-control" id="client_id" name="client_id" required>
-                <?php
-                // Busca todos os clientes cadastrados
-                $stmt = $pdo->query("SELECT id, name FROM users WHERE role = 'client'");
-                $clients = $stmt->fetchAll();
-
-                // Exibe cada cliente como uma opção no select
-                foreach ($clients as $client) {
-                    // Check if the client exists in the clients table
-                    $checkClientStmt = $pdo->prepare("SELECT id FROM clients WHERE user_id = ?");
-                    $checkClientStmt->execute([$client['id']]);
-                    $existingClient = $checkClientStmt->fetch();
-
-                    // If the client doesn't exist in the clients table, create it
-                    if (!$existingClient) {
-                        $createClientStmt = $pdo->prepare("INSERT INTO clients (user_id) VALUES (?)");
-                        $createClientStmt->execute([$client['id']]);
-                    }
-
-                    // Get the client id from the clients table
-                    $getClientIdStmt = $pdo->prepare("SELECT id FROM clients WHERE user_id = ?");
-                    $getClientIdStmt->execute([$client['id']]);
-                    $clientId = $getClientIdStmt->fetchColumn();
-
-                    echo "<option value='" . $clientId . "'>" . htmlspecialchars($client['name']) . "</option>";
-                }
-                ?>
-            </select>
-        </div>
-        <div class="form-group mb-3">
-            <label for="custom_details">Detalhes do Plano</label>
-            <textarea class="form-control" id="custom_details" name="custom_details" rows="5"></textarea>
-        </div>
-
-        <!-- Day-by-Day Workout Details Table -->
-        <div class="form-group mb-3">
-            <label>Detalhes Diários do Treino</label>
-            <table class="table table-bordered" id="day-details-table">
-                <thead>
-                    <tr>
-                        <th>Dia</th>
-                        <th>Opção</th>
-                        <th>Detalhes</th>
-                    </tr>
-                </thead>
-                <tbody>
+<!-- *** ADICIONADO: Wrapper <main> *** -->
+<main class="main-content">
+    <div class="container mt-5">
+        <h2>Adicionar Plano de Treino</h2>
+        <form method="POST">
+            <div class="form-group mb-3">
+                <label for="client_id">Cliente</label>
+                <select class="form-control" id="client_id" name="client_id" required>
                     <?php
-                    // Fetch all day options
-                    $stmt = $pdo->query("SELECT id, name FROM day_options");
-                    $day_options = $stmt->fetchAll();
-                    for ($i = 1; $i <= 7; $i++): ?>
-                        <tr>
-                            <td>
-                                <input type="text" class="form-control" name="day[]" value="Dia <?= $i ?>" required>
-                            </td>
-                            <td>
-                                <select class="form-control" name="day_option_id[]">
-                                    <?php foreach ($day_options as $option): ?>
-                                        <option value="<?= $option['id'] ?>"><?= htmlspecialchars($option['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </td>
-                            <td>
-                                <textarea class="form-control" name="day_details[]" rows="3"></textarea>
-                            </td>
-                        </tr>
-                    <?php endfor; ?>
-                </tbody>
-            </table>
-        </div>
+                    // Busca todos os clientes cadastrados
+                    $stmt = $pdo->query("SELECT id, name FROM users WHERE role = 'client'");
+                    $clients = $stmt->fetchAll();
 
-        <!-- Exercise Selection Table -->
-        <div class="form-group mb-3">
-            <label>Selecionar Exercícios</label>
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Selecionar</th>
-                        <th>Nome</th>
-                        <th>Descrição</th>
-                        <th>Grupo Muscular</th>
-                        <th>Equipamento</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    // Fetch all exercises from the database
-                    $stmt = $pdo->query("SELECT * FROM exercises");
-                    $exercises = $stmt->fetchAll();
+                    // Exibe cada cliente como uma opção no select
+                    foreach ($clients as $client) {
+                        // Check if the client exists in the clients table
+                        $checkClientStmt = $pdo->prepare("SELECT id FROM clients WHERE user_id = ?");
+                        $checkClientStmt->execute([$client['id']]);
+                        $existingClient = $checkClientStmt->fetch();
 
-                    // Display all exercises
-                    foreach ($exercises as $exercise) {
-                        echo "<tr>";
-                        echo "<td><input type='checkbox' name='selected_exercises[]' value='" . $exercise['id'] . "'></td>";
-                        echo "<td>" . htmlspecialchars($exercise['name']) . "</td>";
-                        echo "<td>" . htmlspecialchars($exercise['description']) . "</td>";
-                        echo "<td>" . htmlspecialchars($exercise['muscle_group']) . "</td>";
-                        echo "<td>" . htmlspecialchars($exercise['equipment']) . "</td>";
-                        echo "</tr>";
+                        // If the client doesn't exist in the clients table, create it
+                        if (!$existingClient) {
+                            $createClientStmt = $pdo->prepare("INSERT INTO clients (user_id) VALUES (?)");
+                            $createClientStmt->execute([$client['id']]);
+                        }
+
+                        // Get the client id from the clients table
+                        $getClientIdStmt = $pdo->prepare("SELECT id FROM clients WHERE user_id = ?");
+                        $getClientIdStmt->execute([$client['id']]);
+                        $clientId = $getClientIdStmt->fetchColumn();
+
+                        echo "<option value='" . $clientId . "'>" . htmlspecialchars($client['name']) . "</option>";
                     }
                     ?>
-                </tbody>
-            </table>
-        </div>
+                </select>
+            </div>
+            <div class="form-group mb-3">
+                <label for="custom_details">Detalhes do Plano</label>
+                <textarea class="form-control" id="custom_details" name="custom_details" rows="5"></textarea>
+            </div>
 
-        <button type="submit" class="btn btn-primary">Salvar</button>
-    </form>
-</div>
+            <!-- Day-by-Day Workout Details Table -->
+            <div class="form-group mb-3">
+                <label>Detalhes Diários do Treino</label>
+                <table class="table table-bordered" id="day-details-table">
+                    <thead>
+                        <tr>
+                            <th>Dia</th>
+                            <th>Opção</th>
+                            <th>Detalhes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        // Fetch all day options
+                        $stmt = $pdo->query("SELECT id, name FROM day_options");
+                        $day_options = $stmt->fetchAll();
+                        for ($i = 1; $i <= 7; $i++): ?>
+                            <tr>
+                                <td>
+                                    <input type="text" class="form-control" name="day[]" value="Dia <?= $i ?>" required>
+                                </td>
+                                <td>
+                                    <select class="form-control" name="day_option_id[]">
+                                        <?php foreach ($day_options as $option): ?>
+                                            <option value="<?= $option['id'] ?>"><?= htmlspecialchars($option['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </td>
+                                <td>
+                                    <textarea class="form-control" name="day_details[]" rows="3"></textarea>
+                                </td>
+                            </tr>
+                        <?php endfor; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Exercise Selection Table -->
+            <div class="form-group mb-3">
+                <label>Selecionar Exercícios</label>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Selecionar</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Grupo Muscular</th>
+                            <th>Equipamento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        // Fetch all exercises from the database
+                        $stmt = $pdo->query("SELECT * FROM exercises");
+                        $exercises = $stmt->fetchAll();
+
+                        // Display all exercises
+                        foreach ($exercises as $exercise) {
+                            echo "<tr>";
+                            echo "<td><input type='checkbox' name='selected_exercises[]' value='" . $exercise['id'] . "'></td>";
+                            echo "<td>" . htmlspecialchars($exercise['name']) . "</td>";
+                            echo "<td>" . htmlspecialchars($exercise['description']) . "</td>";
+                            echo "<td>" . htmlspecialchars($exercise['muscle_group']) . "</td>";
+                            echo "<td>" . htmlspecialchars($exercise['equipment']) . "</td>";
+                            echo "</tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="trainer.php" class="btn btn-secondary">Cancelar</a> <!-- Botão Cancelar -->
+        </form>
+    </div>
+</main> <!-- *** FIM: Wrapper <main> *** -->
 
 <?php
 // Inclui o rodapé da página

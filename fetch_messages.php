@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\xampp\htdocs\Projeto_PAP\fetch_messages.php
 session_start();
 include 'db.php'; // Inclui a conexão com o banco de dados
 
@@ -27,28 +28,30 @@ if (!$other_user_id) {
 
 try {
     // Prepara a consulta para buscar mensagens entre os dois usuários
-    // *** MODIFICAÇÃO: Adiciona as novas colunas ao SELECT ***
+    // *** MODIFICAÇÃO AQUI: Adiciona u_sender.profile_picture ***
     $stmt = $pdo->prepare("
         SELECT
             m.id,
             m.sender_id,
             m.receiver_id,
-            m.message_type,         -- <<< ADICIONADO
-            m.message,              -- (agora é legenda ou texto)
-            m.file_url,             -- <<< ADICIONADO
-            m.file_name,            -- <<< ADICIONADO
-            m.file_size,            -- <<< ADICIONADO
-            m.duration,             -- <<< ADICIONADO
+            m.message_type,
+            m.message,
+            m.file_url,
+            m.file_name,
+            m.file_size,
+            m.duration,
             m.timestamp,
-            u_sender.name as sender_name -- Pega o nome do remetente
+            u_sender.name as sender_name,
+            u_sender.profile_picture as sender_avatar -- <<< ADICIONADO AQUI
         FROM messages m
-        JOIN users u_sender ON m.sender_id = u_sender.id -- Junta para pegar o nome do remetente
+        JOIN users u_sender ON m.sender_id = u_sender.id -- Junta para pegar o nome e avatar do remetente
         WHERE
-            (m.sender_id = :user_id AND m.receiver_id = :other_user_id) -- Mensagens enviadas pelo usuário logado para o outro
+            (m.sender_id = :user_id AND m.receiver_id = :other_user_id)
             OR
-            (m.sender_id = :other_user_id AND m.receiver_id = :user_id) -- Mensagens enviadas pelo outro para o usuário logado
-        ORDER BY m.timestamp ASC -- Ordena pela data/hora de envio
+            (m.sender_id = :other_user_id AND m.receiver_id = :user_id)
+        ORDER BY m.timestamp ASC
     ");
+    // **********************************************************
 
     // Executa a consulta, substituindo os placeholders pelos IDs
     $stmt->execute([
@@ -60,10 +63,9 @@ try {
     $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Opcional: Marcar mensagens como lidas aqui (se implementar a funcionalidade 'is_read')
-    // $updateStmt = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE receiver_id = :user_id AND sender_id = :other_user_id AND is_read = 0");
-    // $updateStmt->execute(['user_id' => $user_id, 'other_user_id' => $other_user_id]);
+    // ...
 
-    // Retorna as mensagens em formato JSON (agora incluindo os novos campos)
+    // Retorna as mensagens em formato JSON (agora incluindo sender_avatar)
     echo json_encode(['status' => 'success', 'messages' => $messages]);
 
 } catch (PDOException $e) {

@@ -30,6 +30,26 @@ if ($already_enrolled) {
     exit;
 }
 
+// Verifica se o usuário já está inscrito em duas aulas no mesmo dia.
+// Precisamos juntar com a tabela 'classes' para obter a data da aula.
+$stmt = $pdo->prepare("
+    SELECT COUNT(cp.class_id)
+    FROM class_participants cp
+    JOIN classes c ON cp.class_id = c.id
+    WHERE cp.user_id = ? AND DATE(c.schedule) = (SELECT DATE(schedule) FROM classes WHERE id = ?)
+");
+$stmt->execute([$user_id, $class_id]);
+$count = $stmt->fetchColumn();
+
+if ($count >= 2) {
+    // Se já estiver inscrito em duas aulas, exibe uma mensagem
+    echo "<script>alert('Você já está inscrito em duas aulas neste dia. Não é possível inscrever-se em mais aulas.'); window.location.href = 'classes.php';</script>";
+    exit;
+}
+
+
+
+
 // Inscreve o usuário na aula
 $stmt = $pdo->prepare("INSERT INTO class_participants (class_id, user_id) VALUES (?, ?)");
 $stmt->execute([$class_id, $user_id]);

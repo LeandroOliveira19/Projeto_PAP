@@ -18,7 +18,10 @@ if (isset($_SESSION['user_id'])) {
             header('Location: admin.php');
             break;
         default:
-            header('Location: login.php');
+            // Se o role for desconhecido, desloga por segurança
+            session_unset();
+            session_destroy();
+            header('Location: login.php?error=unknown_role');
             break;
     }
     exit;
@@ -26,6 +29,8 @@ if (isset($_SESSION['user_id'])) {
 
 // Inclui a conexão com o banco de dados
 include 'db.php';
+
+$error_message = ''; // Inicializa a variável de erro
 
 // Processa o formulário de login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -36,61 +41,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$email || !$password) {
         $error_message = "Por favor, preencha todos os campos.";
     } else {
-        // Busca o usuário no banco de dados
-        $stmt = $pdo->prepare("SELECT id, name, password, role, first_login FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+        try {
+            // Busca o usuário no banco de dados
+            // *** MODIFICAÇÃO: Adiciona profile_picture ao SELECT ***
+            $stmt = $pdo->prepare("SELECT id, name, password, role, first_login, profile_picture FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
 
-        // Verifica se o usuário existe
-        if ($user) {
-            // Verifica se a senha está correta
-            if (password_verify($password, $user['password'])) {
-                // Senha hash: usa password_verify
-                $is_password_correct = true;
-            } elseif ($user['password'] === $password) {
-                // Senha em texto puro: compara diretamente
-                $is_password_correct = true;
-            } else {
+            // Verifica se o usuário existe
+            if ($user) {
                 $is_password_correct = false;
-            }
 
-            if ($is_password_correct) {
-                // Define as variáveis de sessão
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['name'] = $user['name'];
+                // 1. Verifica com password_verify (método preferencial e seguro)
+                if (password_verify($password, $user['password'])) {
+                    $is_password_correct = true;
+                }
+                // 2. Fallback para SHA256 (se ainda tiver senhas antigas assim) - Menos seguro
+                elseif (hash('sha256', $password) === $user['password']) {
+                     $is_password_correct = true;
+                     // Opcional: Atualizar a senha para o hash mais seguro aqui
+                     // $new_hash = password_hash($password, PASSWORD_DEFAULT);
+                     // $update_hash_stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                     // $update_hash_stmt->execute([$new_hash, $user['id']]);
+                     // error_log("User ID {$user['id']} logged in with SHA256 fallback. Consider rehashing.");
+                }
+                // 3. Fallback para texto puro (MUITO INSEGURO - REMOVER ASSIM QUE POSSÍVEL)
+                elseif ($user['password'] === $password) {
+                    $is_password_correct = true;
+                    // Opcional: Atualizar a senha para o hash mais seguro aqui
+                    // $new_hash = password_hash($password, PASSWORD_DEFAULT);
+                    // $update_hash_stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                    // $update_hash_stmt->execute([$new_hash, $user['id']]);
+                    error_log("User ID {$user['id']} logged in with PLAIN TEXT password. SECURITY RISK!");
+                }
 
-                // Check if it's the first login
-                if ($user['first_login'] == 1) {
-                    // Redirect to change password page
-                    header('Location: change_password.php?first_login=true');
+                if ($is_password_correct) {
+                    // Define as variáveis de sessão padrão
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['role'] = $user['role'];
+                    $_SESSION['name'] = $user['name'];
+                    // *** MODIFICAÇÃO: Guarda o nome do ficheiro da foto de perfil na sessão ***
+                    $_SESSION['profile_picture'] = $user['profile_picture']; // Pode ser NULL se não houver foto
+
+                    // Verifica se é o primeiro login (para forçar mudança de senha)
+                    if ($user['first_login'] == 1) {
+                        // Redireciona para a página de alteração de senha
+                        // Passa um parâmetro para indicar que é o primeiro login (opcional, mas útil)
+                        header('Location: change_password.php?first_login=true');
+                        exit;
+                    }
+
+                    // Redireciona para a página correta com base no perfil
+                    switch ($user['role']) {
+                        case 'client':
+                            header('Location: dashboard.php');
+                            break;
+                        case 'trainer':
+                            header('Location: trainer.php');
+                            break;
+                        case 'nutritionist':
+                            header('Location: nutritionist.php');
+                            break;
+                        case 'admin':
+                            header('Location: admin.php');
+                            break;
+                        default:
+                            // Role desconhecido após login bem-sucedido? Improvável, mas seguro deslogar.
+                            session_unset();
+                            session_destroy();
+                            header('Location: login.php?error=login_role_issue');
+                            break;
+                    }
                     exit;
+                } else {
+                    $error_message = "Senha incorreta.";
                 }
-
-                // Redireciona para a página correta com base no perfil
-                switch ($user['role']) {
-                    case 'client':
-                        header('Location: dashboard.php');
-                        break;
-                    case 'trainer':
-                        header('Location: trainer.php');
-                        break;
-                    case 'nutritionist':
-                        header('Location: nutritionist.php');
-                        break;
-                    case 'admin':
-                        header('Location: admin.php');
-                        break;
-                    default:
-                        header('Location: login.php');
-                        break;
-                }
-                exit;
             } else {
-                $error_message = "Senha incorreta.";
+                $error_message = "E-mail não encontrado.";
             }
-        } else {
-            $error_message = "E-mail não encontrado.";
+        } catch (PDOException $e) {
+            // Em caso de erro de banco de dados
+            $error_message = "Erro ao tentar fazer login. Tente novamente mais tarde.";
+            // Logar o erro real para depuração (não mostrar ao usuário)
+            error_log("Erro de PDO no login: " . $e->getMessage());
         }
     }
 }
@@ -112,13 +145,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <h2 class="text-center">Login</h2>
-                <?php if (isset($error_message)): ?>
-                    <div class="alert alert-danger"><?= $error_message ?></div>
+                <?php if (!empty($error_message)): // Verifica se a mensagem de erro não está vazia ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($error_message) // Usa htmlspecialchars por segurança ?></div>
                 <?php endif; ?>
                 <form action="login.php" method="POST">
                     <div class="form-group mb-3">
                         <label for="email">E-mail</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
+                        <input type="email" class="form-control" id="email" name="email" required value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' // Mantém o email preenchido em caso de erro ?>">
                     </div>
                     <div class="form-group mb-3">
                         <label for="password">Senha</label>

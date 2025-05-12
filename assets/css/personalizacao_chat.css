@@ -1,159 +1,201 @@
 /* c:\xampp\htdocs\Projeto_PAP\assets\css\personalizacao_chat.css */
-/* VERSÃO COM FUNDO BRANCO FIXO NA ÁREA DE MENSAGENS E PADRÕES iMESSAGE */
+/* VERSÃO COM CORES iMESSAGE (Light/Dark) */
 
-/* Define as variáveis de cor no escopo raiz */
 :root {
-    /* --- Default Chat Colors (iMessage Style) --- */
-    --chat-sent-bg: #0B93F6;      /* iMessage Blue */
-    --chat-sent-text: #FFFFFF;   /* White text */
-    --chat-received-bg: #E5E5EA; /* iMessage Gray */
-    --chat-received-text: #000000; /* Black text */
-  
-    /* Optional: Timestamp colors (ajustados para contraste nos fundos iMessage) */
-    --chat-timestamp-sent: #d1eaff; /* Azul claro para fundo azul */
-    --chat-timestamp-received: #6c757d; /* Cinza escuro para fundo cinza claro */
-  
-    /* --- Outras Variáveis Padrão (usadas nos estilos abaixo) --- */
-    --chat-input-bg: #f8f9fa; /* Fundo padrão da área de input (pode ser branco se preferir: #ffffff) */
-    --primary-color: #0d6efd; /* Cor primária Bootstrap (usada no foco e botão enviar) */
-  }
-  
-  
-  /* --- Estilos Existentes Mantidos e Usando Variáveis --- */
-  
-  .chat-container {
-      height: calc(100vh - 120px);
-      min-height: 400px;
-      display: flex;
-      flex-direction: column;
-      background-color: #ffffff; /* Fundo do container geral do chat branco */
-      border: 1px solid #dee2e6; /* Borda padrão Bootstrap */
-      border-radius: 0.375rem;
-      /* Removida transição de tema */
-  }
-  
-  .chat-container .card-header {
-      border-bottom: 1px solid #dee2e6;
-      /* Mantém o header primário (azul) definido em chat.php */
-  }
-  
-  .chat-messages {
-      flex-grow: 1;
-      overflow-y: auto;
-      padding: 15px;
-      background-color: #ffffff !important; /* FUNDO BRANCO FIXO E IMPORTANTE */
-      display: flex;
-      flex-direction: column;
-      /* Removida transição de tema */
-  }
-  
-  .message-bubble {
-      max-width: 75%;
-      padding: 10px 15px;
-      border-radius: 18px;
-      margin-bottom: 10px;
-      word-wrap: break-word;
-      line-height: 1.4;
-      position: relative;
-      display: flex; /* Adicionado para melhor controle do timestamp */
-      flex-direction: column; /* Empilha texto e timestamp */
-      /* Removida transição de tema */
-  }
-  
-  /* Estilos usam variáveis para permitir personalização */
-  .message-bubble.sent {
-      background-color: var(--chat-sent-bg); /* Usa variável */
-      color: var(--chat-sent-text); /* Usa variável */
-      align-self: flex-end;
-      border-bottom-right-radius: 5px;
-  }
-  
-  .message-bubble.received {
-      background-color: var(--chat-received-bg); /* Usa variável */
-      color: var(--chat-received-text); /* Usa variável */
-      align-self: flex-start;
-      border-bottom-left-radius: 5px;
-  }
-  
-  /* Timestamp dentro do balão */
-  .message-bubble .timestamp {
-      font-size: 0.7rem; /* Tamanho reduzido */
-      margin-top: 5px;   /* Espaço acima */
-      display: block;    /* Garante que ocupe a linha */
-      opacity: 0.85;     /* Leve transparência */
-  }
-  
-  .message-bubble.sent .timestamp {
-      color: var(--chat-timestamp-sent); /* Usa variável */
-      text-align: right; /* Alinha à direita */
-  }
-  
-  .message-bubble.received .timestamp {
-      color: var(--chat-timestamp-received); /* Usa variável */
-      text-align: left; /* Alinha à esquerda */
-  }
-  
-  .chat-input-area {
-      padding: 10px 15px;
-      background-color: var(--chat-input-bg); /* Usa variável (padrão definido no :root) */
-      border-top: 1px solid #dee2e6; /* Borda padrão */
-      /* Removida transição de tema */
-  }
-  
-  #message-input {
-      border-right: 0;
-      border-radius: 20px 0 0 20px;
-      background-color: #ffffff; /* Fundo branco FIXO para o input (como estava antes) */
-      color: #212529; /* Texto escuro padrão */
-      border: 1px solid #ced4da; /* Borda padrão */
-      /* Removida transição de tema */
-  }
-  
-  #message-input:focus {
-      box-shadow: none;
-      border-color: var(--primary-color); /* Foco usa a variável primária */
-  }
-  
-  #send-button {
-      border-radius: 0 20px 20px 0;
-      background-color: var(--primary-color); /* Usa a variável primária */
-      border-color: var(--primary-color);     /* Usa a variável primária */
-      /* Removida transição de tema */
-  }
-  #send-button:hover {
-      opacity: 0.9;
-  }
-  
-  /* Estilos do Dropdown de personalização (mantidos) */
-  #chatSettingsDropdown {
-      color: #fff; /* Ícone branco no header azul */
-      background: none;
-      border: none;
-  }
-  #chatSettingsDropdown:hover {
-      opacity: 0.8;
-  }
-  
-  .dropdown-menu[aria-labelledby="chatSettingsDropdown"] {
-      /* Estilos padrão Bootstrap devem funcionar bem no tema claro */
-  }
-  
-  .dropdown-menu .form-control-color {
-      width: 100%;
-      height: 30px;
-      padding: 0.1rem 0.3rem;
-  }
-  .dropdown-menu .form-label.small {
-      margin-bottom: 0.2rem;
-      color: #6c757d; /* Cinza padrão */
-  }
-  
-  /* Remover o switch de tema do dropdown (mantido) */
-  .dropdown-menu .theme-switch-wrapper {
-     display: none; /* Esconde o switch de tema */
-  }
-  /* Ajustar espaçamento se o switch for removido (mantido) */
-  .dropdown-menu li:has(.theme-switch-wrapper) + li hr.dropdown-divider {
-      display: none; /* Esconde a linha divisória após o switch escondido */
-  }
-  
+  /* --- Cores Base (Light Mode - iMessage Style) --- */
+  --chat-bg: #FFFFFF;             /* Fundo principal branco */
+  --chat-text: #000000;           /* Texto principal preto */
+  --chat-border: #D1D1D6;         /* Borda cinza claro (similar iOS) */
+  --chat-messages-bg: #FFFFFF;    /* Fundo da área de mensagens */
+  --chat-input-area-bg: #F8F9FA;  /* Fundo da área de input (cinza claro Bootstrap) */
+  --chat-input-bg: #FFFFFF;       /* Fundo do campo de input */
+  --chat-placeholder-text: #8A8A8E; /* Cinza para placeholder */
+
+  /* --- Cores das Bolhas (Light Mode - iMessage Style) --- */
+  --chat-sent-bg: #007AFF;         /* Azul iMessage */
+  --chat-sent-bg-rgb: 0, 122, 255; /* Versão RGB para rgba() */
+  --chat-sent-text: #FFFFFF;      /* Texto branco */
+  --chat-received-bg: #E5E5EA;    /* Cinza iMessage */
+  --chat-received-text: #000000;  /* Texto preto */
+
+  /* --- Cores dos Timestamps (Light Mode) --- */
+  --chat-timestamp-sent: #d1eaff;    /* Azul claro sobre fundo azul */
+  --chat-timestamp-received: #6c757d; /* Cinza escuro sobre fundo cinza */
+}
+
+.dark-mode {
+  /* --- Cores Base (Dark Mode - iMessage Style) --- */
+  --chat-bg: #000000;             /* Fundo principal preto */
+  --chat-text: #FFFFFF;           /* Texto principal branco */
+  --chat-border: #3A3A3C;         /* Borda cinza escuro (similar iOS Dark) */
+  --chat-messages-bg: #000000;    /* Fundo da área de mensagens */
+  --chat-input-area-bg: #1C1C1E;  /* Fundo da área de input (cinza escuro iOS) */
+  --chat-input-bg: #2C2C2E;       /* Fundo do campo de input (cinza mais escuro) */
+  --chat-placeholder-text: #8D8D93; /* Cinza claro para placeholder */
+
+  /* --- Cores das Bolhas (Dark Mode - iMessage Style) --- */
+  --chat-sent-bg: #0B84FF;         /* Azul mais vivo iMessage Dark */
+  --chat-sent-bg-rgb: 11, 132, 255;/* Versão RGB para rgba() */
+  --chat-sent-text: #FFFFFF;      /* Texto branco */
+  --chat-received-bg: #2C2C2E;    /* Cinza escuro iMessage Dark */
+  --chat-received-text: #FFFFFF;  /* Texto branco */
+
+  /* --- Cores dos Timestamps (Dark Mode) --- */
+  --chat-timestamp-sent: #a8d8ff;    /* Azul mais claro sobre fundo azul */
+  --chat-timestamp-received: #8D8D93; /* Cinza claro sobre fundo cinza escuro */
+}
+
+
+/* --- Estilos Gerais do Chat --- */
+
+.chat-container {
+    height: calc(100vh - 120px); /* Ajuste conforme necessário */
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--chat-bg); /* Usa variável */
+    border: 1px solid var(--chat-border); /* Usa variável */
+    border-radius: 0.375rem;
+    transition: background-color 0.3s ease, border-color 0.3s ease; /* Transição suave */
+}
+
+.chat-container .card-header {
+    /* Assume que o header tem seu próprio estilo (ex: bg-primary) definido em chat.php */
+    /* Mas a borda inferior deve seguir o tema */
+    border-bottom: 1px solid var(--chat-border); /* Usa variável */
+    transition: border-color 0.3s ease;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 15px;
+    background-color: var(--chat-messages-bg); /* Usa variável */
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.3s ease;
+    /* Removido !important para permitir override do dark-mode */
+}
+
+/* Estilos das Bolhas */
+.message-bubble {
+    max-width: 75%;
+    padding: 10px 15px;
+    border-radius: 18px;
+    margin-bottom: 10px;
+    word-wrap: break-word;
+    line-height: 1.4;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.3s ease, color 0.3s ease; /* Transição suave */
+}
+
+.message-bubble.sent {
+    background-color: var(--chat-sent-bg); /* Usa variável */
+    color: var(--chat-sent-text); /* Usa variável */
+    align-self: flex-end;
+    border-bottom-right-radius: 5px;
+}
+
+.message-bubble.received {
+    background-color: var(--chat-received-bg); /* Usa variável */
+    color: var(--chat-received-text); /* Usa variável */
+    align-self: flex-start;
+    border-bottom-left-radius: 5px;
+}
+
+/* Timestamp dentro do balão */
+.message-bubble .timestamp {
+    font-size: 0.7rem;
+    margin-top: 5px;
+    display: block;
+    opacity: 0.85;
+    transition: color 0.3s ease; /* Transição suave */
+}
+
+.message-bubble.sent .timestamp {
+    color: var(--chat-timestamp-sent); /* Usa variável */
+    text-align: right;
+}
+
+.message-bubble.received .timestamp {
+    color: var(--chat-timestamp-received); /* Usa variável */
+    text-align: left;
+}
+
+/* Área de Input */
+.chat-input-area {
+    padding: 10px 15px;
+    background-color: var(--chat-input-area-bg); /* Usa variável */
+    border-top: 1px solid var(--chat-border); /* Usa variável */
+    transition: background-color 0.3s ease, border-color 0.3s ease; /* Transição suave */
+}
+
+#message-input {
+    border-right: 0;
+    border-radius: 20px 0 0 20px;
+    background-color: var(--chat-input-bg); /* Usa variável */
+    color: var(--chat-text); /* Usa variável */
+    border: 1px solid var(--chat-border); /* Usa variável */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Transição suave */
+}
+#message-input::placeholder {
+    color: var(--chat-placeholder-text); /* Usa variável */
+    transition: color 0.3s ease;
+}
+
+#message-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--chat-sent-bg-rgb), 0.25); /* Usa variável RGB */
+    border-color: var(--chat-sent-bg); /* Usa variável */
+    background-color: var(--chat-input-bg); /* Garante que o fundo não mude drasticamente no foco */
+}
+
+#send-button {
+    border-radius: 0 20px 20px 0;
+    background-color: var(--chat-sent-bg); /* Usa variável */
+    border-color: var(--chat-sent-bg);     /* Usa variável */
+    color: var(--chat-sent-text); /* Garante contraste */
+    transition: background-color 0.3s ease, border-color 0.3s ease, opacity 0.2s ease; /* Transição suave */
+}
+#send-button:hover {
+    opacity: 0.85;
+}
+#send-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Estilos do Dropdown de personalização (mantidos, mas cores podem ser afetadas pelo tema) */
+#chatSettingsDropdown {
+    /* A cor do ícone pode precisar ser ajustada dependendo do fundo do header */
+    /* Ex: color: #fff; se o header for azul */
+    background: none;
+    border: none;
+}
+#chatSettingsDropdown:hover {
+    opacity: 0.8;
+}
+
+/* O dropdown em si usará estilos Bootstrap, que devem se adaptar ao tema claro/escuro se aplicado ao body */
+.dropdown-menu[aria-labelledby="chatSettingsDropdown"] {
+    /* Estilos padrão Bootstrap */
+}
+
+.dropdown-menu .form-control-color {
+    width: 100%;
+    height: 30px;
+    padding: 0.1rem 0.3rem;
+}
+.dropdown-menu .form-label.small {
+    margin-bottom: 0.2rem;
+    /* A cor será herdada ou definida pelo tema Bootstrap */
+}
+
+/* Remover o switch de tema do dropdown (mantido) */
+.dropdown-menu .theme-switch-wrapper {
+   display: none;
+}
+.dropdown-menu li:has(.theme-switch-wrapper) + li hr.dropdown-divider {
+    display: none;
+}
