@@ -76,7 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_deactivate->execute([$client_id, $nutritionist_id]);
 
         // 2. Inserir o novo plano principal como ativo
-        $stmt_insert_plan = $pdo->prepare("INSERT INTO diet_plans (client_id, nutritionist_id, title, description, is_active) VALUES (?, ?, ?, ?, 1)");
+        // CORREÇÃO: Incluir 'title' na inserção e usar 'plan_details' para a descrição.
+        // $plan_title vem do campo "Título do Plano"
+        // $plan_description vem do campo "Descrição/Notas Gerais" e vai para plan_details
+        $stmt_insert_plan = $pdo->prepare("INSERT INTO diet_plans (client_id, nutritionist_id, title, plan_details, is_active) VALUES (?, ?, ?, ?, 1)");
         $stmt_insert_plan->execute([$client_id, $nutritionist_id, $plan_title, $plan_description]);
         $diet_plan_id = $pdo->lastInsertId();
 
@@ -263,7 +266,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Função para adicionar uma linha de alimento a uma refeição específica
     function addFoodRow(mealBlock) {
         const foodsList = mealBlock.querySelector('.foods-list');
-        const dayName = mealBlock.closest('.day-section').querySelector('.card-header h5').textContent.trim(); // Get "Dia X"
+        const daySection = mealBlock.closest('.day-section');
+        const dayName = daySection.querySelector('.card-header h5').textContent.trim(); // Get "Dia X"
         const mealName = mealBlock.querySelector('.card-header h6').textContent.trim(); // Get "Pequeno-almoço", etc.
         const foodCounter = foodsList.querySelectorAll('.food-row').length;
 

@@ -1,10 +1,7 @@
 <?php
-// filepath: c:\xampp\htdocs\Projeto_PAP\sidebar_admin.php
-
-// Garante que $active_page está definida
-if (!isset($active_page)) {
-    $active_page = '';
-}
+// c:\xampp\htdocs\Projeto_PAP\sidebar_admin.php
+// This sidebar is included in admin-related pages.
+// The $active_page variable should be defined in the file that includes this sidebar.
 ?>
 <aside class="sidebar">
     <div class="sidebar-header">
@@ -14,27 +11,46 @@ if (!isset($active_page)) {
         <ul class="sidebar-nav">
             <li>
                 <a href="admin.php" class="<?= ($active_page == 'admin.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-shield-alt fa-fw"></i><span>Administração</span>
+                    <i class="fas fa-chart-line fa-fw"></i>
+                    <span>Estatísticas</span>
                 </a>
             </li>
-             <li>
-                <a href="profile.php" class="<?= ($active_page == 'profile.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-user-cog fa-fw"></i><span>Meu Perfil</span>
-                </a>
-            </li>
-            <!-- Adicione outros links específicos do admin aqui -->
-            <!-- Exemplo:
             <li>
-                <a href="manage_users.php" class="<?= ($active_page == 'manage_users.php') ? 'active' : ''; ?>">
-                    <i class="fas fa-users-cog fa-fw"></i><span>Gerir Utilizadores</span>
+                <a href="manage_classes_admin.php" class="<?= ($active_page == 'manage_classes_admin.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-calendar-check fa-fw"></i>
+                    <span>Gerir Aulas</span>
                 </a>
             </li>
-             -->
+            <li>
+                <a href="manage_trainers_admin.php" class="<?= ($active_page == 'manage_trainers_admin.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-dumbbell fa-fw"></i>
+                    <span>Gerir Treinadores</span>
+                </a>
+            </li>
+            <li>
+                <a href="manage_nutritionists_admin.php" class="<?= ($active_page == 'manage_nutritionists_admin.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-apple-alt fa-fw"></i>
+                    <span>Gerir Nutricionistas</span>
+                </a>
+            </li>
+            <li>
+                <a href="manage_receptionists_admin.php" class="<?= ($active_page == 'manage_receptionists_admin.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-concierge-bell fa-fw"></i>
+                    <span>Gerir Recepcionistas</span>
+                </a>
+            </li>
+            <li>
+                <a href="manage_clients_admin.php" class="<?= ($active_page == 'manage_clients_admin.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-users fa-fw"></i>
+                    <span>Gerir Clientes</span>
+                </a>
+            </li>
         </ul>
     </nav>
-     <div class="sidebar-footer">
-         <a href="logout.php">
-            <i class="fas fa-sign-out-alt fa-fw"></i><span>Sair</span>
+    <div class="sidebar-footer">
+        <a href="logout.php">
+            <i class="fas fa-sign-out-alt fa-fw"></i>
+            <span>Sair</span>
         </a>
     </div>
 </aside>

@@ -11,8 +11,60 @@ if (!isset($active_page)) { $active_page = ''; } // Garante que $active_page exi
     <nav>
         <ul class="sidebar-nav">
              <li><a href="dashboard.php" class="<?= ($active_page == 'dashboard.php') ? 'active' : ''; ?>"><i class="fas fa-tachometer-alt fa-fw"></i><span>Dashboard</span></a></li>
-            <li><a href="workout_hub.php" class="<?= ($active_page == 'workout_hub.php') ? 'active' : ''; ?>"><i class="fas fa-dumbbell fa-fw"></i><span>Plano de Treino</span></a></li>
-            <li><a href="nutrition_hub.php" class="<?= ($active_page == 'nutrition_hub.php') ? 'active' : ''; ?>"><i class="fas fa-utensils fa-fw"></i><span>Nutrição</span></a></li>
+            <!-- Item de Plano de Treino com Sub-menu ATUALIZADO -->
+            <?php
+                $workout_submenu_pages = ['workout_hub.php', 'workout_plan_history.php', 'workout_plan_details.php'];
+                $is_workout_submenu_active = in_array($active_page, $workout_submenu_pages);
+            ?>
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link has-arrow <?= $is_workout_submenu_active ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#workoutSubmenu" aria-expanded="<?= $is_workout_submenu_active ? 'true' : 'false'; ?>" aria-controls="workoutSubmenu">
+                    <i class="fas fa-dumbbell fa-fw"></i>
+                    <span>Plano de Treino</span>
+                </a>
+                <ul id="workoutSubmenu" class="sidebar-dropdown list-unstyled collapse <?= $is_workout_submenu_active ? 'show' : ''; ?>" data-bs-parent=".sidebar-nav">
+                    <li class="sidebar-item">
+                        <a href="workout_hub.php" class="sidebar-link <?= ($active_page == 'workout_hub.php') ? 'active' : ''; ?>">
+                            <i class="fas fa-eye fa-fw ms-3"></i> <span>Ver Plano Ativo</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="workout_plan_details.php" class="sidebar-link <?= ($active_page == 'workout_plan_details.php') ? 'active' : ''; ?>">
+                            <i class="fas fa-list-alt fa-fw ms-3"></i> <span>Detalhes dos Exercícios</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="workout_plan_history.php" class="sidebar-link <?= ($active_page == 'workout_plan_history.php') ? 'active' : ''; ?>">
+                            <i class="fas fa-history fa-fw ms-3"></i> <span>Histórico de Planos</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <!-- Fim Item de Plano de Treino com Sub-menu -->
+
+            <!-- Item de Nutrição com Sub-menu ATUALIZADO -->
+            <?php
+                // Define quais páginas pertencem ao submenu de Nutrição
+                $nutrition_submenu_pages = ['nutrition_hub.php', 'recommendations_client.php', 'recipes_client.php'];
+                $is_nutrition_submenu_active = in_array($active_page, $nutrition_submenu_pages);
+            ?>
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link has-arrow <?= $is_nutrition_submenu_active ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#nutritionSubmenu" aria-expanded="<?= $is_nutrition_submenu_active ? 'true' : 'false'; ?>" aria-controls="nutritionSubmenu">
+                    <i class="fas fa-utensils fa-fw"></i>
+                    <span>Nutrição</span>
+                </a>
+                <ul id="nutritionSubmenu" class="sidebar-dropdown list-unstyled collapse <?= $is_nutrition_submenu_active ? 'show' : ''; ?>" data-bs-parent=".sidebar-nav">
+                    <li class="sidebar-item">
+                        <a href="nutrition_hub.php" class="sidebar-link <?= ($active_page == 'nutrition_hub.php') ? 'active' : ''; ?>"><i class="fas fa-concierge-bell fa-fw ms-3"></i> <span>Plano Alimentar</span></a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="recommendations_client.php" class="sidebar-link <?= ($active_page == 'recommendations_client.php') ? 'active' : ''; ?>"><i class="fas fa-lightbulb fa-fw ms-3"></i> <span>Recomendações</span></a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="recipes_client.php" class="sidebar-link <?= ($active_page == 'recipes_client.php') ? 'active' : ''; ?>"><i class="fas fa-utensil-spoon fa-fw ms-3"></i> <span>Receitas</span></a>
+                    </li>
+                </ul>
+            </li>
+            <!-- Fim Item de Nutrição com Sub-menu -->
             <li><a href="classes.php" class="<?= ($active_page == 'classes.php') ? 'active' : ''; ?>"><i class="fas fa-calendar-check fa-fw"></i><span>Aulas</span></a></li>
 
             <!-- Item de Perfil com Sub-menu ATUALIZADO -->

@@ -1,10 +1,10 @@
 <?php
-// Inicia a sessão
+// filepath: c:\xampp\htdocs\Projeto_PAP\workout_hub.php
 session_start();
 
 // Verifica se o usuário está logado e se é um cliente
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'client') {
-    header('Location: login.php');
+    header('Location: login.php'); // Redireciona para a página de login se não estiver logado
     exit;
 }
 
@@ -14,184 +14,204 @@ include 'db.php';
 // Inclui o cabeçalho da página
 include 'header.php';
 
-// *** ADICIONADO: Define qual link da sidebar deve estar ativo ***
-$active_page = basename($_SERVER['PHP_SELF']);
+// Define qual link da sidebar deve estar ativo
+$active_page = basename($_SERVER['PHP_SELF']); // Pega o nome do arquivo atual (workout_hub.php)
+
+// Inclui a sidebar do cliente
+include 'sidebar_client.php';
+
+$user_id = $_SESSION['user_id'];
+$workout_plan = null;
+$workout_plan_days = []; // Details for each day (including JSON actions)
+$page_error = '';
+
+try {
+    // 1. Get the client_id for the logged-in user
+    $stmt_client = $pdo->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+    $stmt_client->execute([$user_id]);
+    $client_data = $stmt_client->fetch();
+
+    if (!$client_data) {
+        throw new Exception("Registo de cliente não encontrado.");
+    }
+    $client_id = $client_data['id'];
+
+    // 2. Fetch the client's ACTIVE workout plan and trainer's name
+    $stmt_plan = $pdo->prepare("
+        SELECT wp.id, wp.plan_details, wp.created_at, u.name as trainer_name
+        FROM workout_plans wp
+        JOIN users u ON wp.trainer_id = u.id
+        WHERE wp.client_id = ? AND wp.is_active = 1
+        LIMIT 1
+    ");
+    $stmt_plan->execute([$client_id]);
+    $workout_plan = $stmt_plan->fetch();
+
+    if ($workout_plan) {
+        $workout_plan_id = $workout_plan['id'];
+
+        // 3. Fetch day-by-day details for this plan (for accordion)
+        $stmt_days = $pdo->prepare("
+            SELECT wpd.day_name, wpd.day_details, do.name AS day_option_name
+            FROM workout_plan_days wpd
+            LEFT JOIN day_options do ON wpd.day_option_id = do.id
+            WHERE wpd.workout_plan_id = ?
+            ORDER BY FIELD(wpd.day_name, 'Dia 1', 'Dia 2', 'Dia 3', 'Dia 4', 'Dia 5', 'Dia 6', 'Dia 7')
+        ");
+        $stmt_days->execute([$workout_plan_id]);
+        $workout_plan_days = $stmt_days->fetchAll();
+
+    } else { // No active plan found
+        $page_error = "Nenhum plano de treino ativo encontrado. Contacte o seu treinador.";
+    }
+
+} catch (PDOException $e) {
+    $page_error = "Erro ao carregar o plano de treino: " . $e->getMessage();
+    error_log("Erro BD ao carregar plano de treino (workout_hub.php): " . $e->getMessage());
+} catch (Exception $e) {
+    $page_error = "Erro: " . $e->getMessage();
+    error_log("Erro geral ao carregar plano de treino (workout_hub.php): " . $e->getMessage());
+}
+
+// Helper function to render actions from JSON
+function renderActions($json_details) {
+    $actions = json_decode($json_details, true);
+    if (!is_array($actions) || empty($actions)) {
+        return '<p class="text-muted small fst-italic">Nenhuma ação detalhada para este dia.</p>';
+    }
+
+    $html = '<ul class="list-unstyled small mb-0">';
+    foreach ($actions as $action) {
+        $html .= '<li>';
+        switch ($action['type']) {
+            case 'sets_reps':
+                $html .= "<strong>Sets x Reps:</strong> " . htmlspecialchars($action['data']['sets'] ?? '') . " x " . htmlspecialchars($action['data']['reps'] ?? '');
+                if (!empty($action['data']['notes'])) {
+                    $html .= " <span class='text-muted'>(" . htmlspecialchars($action['data']['notes']) . ")</span>";
+                }
+                break;
+            case 'rest_time':
+                $html .= "<strong>Descanso:</strong> " . htmlspecialchars($action['data']['time'] ?? '') . " " . htmlspecialchars($action['data']['unit'] ?? '');
+                break;
+            case 'tempo':
+                $html .= "<strong>Tempo:</strong> " . htmlspecialchars($action['data']['tempo'] ?? '');
+                break;
+            case 'rpe':
+                $html .= "<strong>RPE:</strong> " . htmlspecialchars($action['data']['value'] ?? '');
+                 if (!empty($action['data']['notes'])) {
+                    $html .= " <span class='text-muted'>(" . htmlspecialchars($action['data']['notes']) . ")</span>";
+                }
+                break;
+            case 'note':
+                $html .= "<strong>Nota:</strong> " . nl2br(htmlspecialchars($action['data']['text'] ?? ''));
+                break;
+            case 'cardio':
+                 $html .= "<strong>Cardio:</strong> " . htmlspecialchars($action['data']['type'] ?? '') . " (" . htmlspecialchars($action['data']['duration'] ?? '') . " min)";
+                 break;
+            default:
+                $html .= "Ação desconhecida";
+                break;
+        }
+        $html .= '</li>';
+    }
+    $html .= '</ul>';
+    return $html;
+}
+
+// The getExercisesForDayOption function was moved to workout_plan_details.php
+
 ?>
 
-<?php include 'sidebar_client.php'; ?>
+<style>
+    /* Optional: Add some styling for the layout */
+    .workout-accordion .accordion-item {
+        border: 1px solid var(--bs-border-color-translucent);
+        border-radius: 0.5rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    }
+    .workout-accordion .accordion-button {
+        font-weight: 500;
+        color: var(--bs-body-color);
+        background-color: var(--bs-tertiary-bg);
+        border-radius: calc(0.5rem - 1px) calc(0.5rem - 1px) 0 0;
+    }
+    .workout-accordion .accordion-button:not(.collapsed) {
+        color: var(--bs-primary-text-emphasis);
+        background-color: var(--bs-primary-bg-subtle);
+        box-shadow: inset 0 -1px 0 var(--bs-border-color-translucent);
+    }
+    .workout-accordion .accordion-body ul { list-style-type: none; padding-left: 0; }
+    .workout-accordion .accordion-body ul li { padding: 0.4rem 0; border-bottom: 1px dashed var(--bs-border-color-translucent); }
+    .workout-accordion .accordion-body ul li:last-child { border-bottom: none; }
 
-<!-- *** ADICIONADO: Wrapper <main> para o conteúdo principal *** -->
+     .section-divider {
+        margin-top: 2.5rem;
+        margin-bottom: 2.5rem;
+        border-top: 1px solid var(--bs-border-color);
+    }
+</style>
+
+<!-- Conteúdo Principal -->
 <main class="main-content">
-    <div class="container mt-5"> <!-- Container original mantido dentro do main -->
-        <h2>Central de Treino</h2>
-        <?php
-        // Fetch the client's ID
-        $stmt = $pdo->prepare("SELECT id FROM clients WHERE user_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $client = $stmt->fetch();
+    <div class="container mt-5">
+        <h2>Meu Plano de Treino</h2>
 
-        if ($client) {
-            $client_id = $client['id'];
+        <?php if ($page_error): ?>
+            <div class="alert alert-warning"><?= htmlspecialchars($page_error) ?></div>
+        <?php elseif ($workout_plan): ?>
 
-            // Fetch the active workout plan ID and trainer's name
-            $stmt = $pdo->prepare("SELECT wp.id, u.name AS trainer_name
-                                    FROM workout_plans wp
-                                    JOIN users u ON wp.trainer_id = u.id
-                                    WHERE wp.client_id = ? AND wp.is_active = 1");
-            $stmt->execute([$client_id]);
-            $workout_plan_info = $stmt->fetch(); // Renamed to avoid conflict later
-
-            if ($workout_plan_info) {
-                // Display Trainer's Name prominently
-                echo "<div class='alert alert-info' role='alert'>";
-                echo "<strong>Seu Treinador:</strong> " . htmlspecialchars($workout_plan_info['trainer_name']);
-                echo "</div>";
-            }
-        }
-        ?>
-        <ul class="nav nav-tabs" id="myTab">
-            <li class="nav-item">
-                <a class="nav-link active" id="personal-plan-tab" data-bs-toggle="tab" href="#personal-plan">Plano de Treino</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="generic-plans-tab" data-bs-toggle="tab" href="#generic-plans">Detalhes do Plano</a>
-            </li>
-            <li class="nav-item">
-                <!-- Link direto para a página de histórico -->
-                <a class="nav-link" href="workout_plan_history.php">Histórico de Planos</a>
-            </li>
-        </ul>
-
-        <div class="tab-content mt-3" id="myTabContent">
-            <!-- Plano de Treino -->
-            <div class="tab-pane fade show active" id="personal-plan">
-                <?php
-                // (Conteúdo PHP e HTML existente para esta aba - sem alterações aqui)
-                if ($client && $workout_plan_info) { // Use the fetched plan info
-                    // Fetch the day-by-day details
-                    $stmt = $pdo->prepare("SELECT wpd.day_name, wpd.day_details, do.name AS day_option_name, wpd.workout_plan_id
-                                            FROM workout_plan_days wpd
-                                            LEFT JOIN day_options do ON wpd.day_option_id = do.id
-                                            WHERE wpd.workout_plan_id = ?");
-                    $stmt->execute([$workout_plan_info['id']]); // Use the correct ID
-                    $workout_plan_days = $stmt->fetchAll();
-
-                    if ($workout_plan_days) {
-                        foreach ($workout_plan_days as $day) {
-                            echo "<div class='card mb-3'>";
-                            echo "<div class='card-body'>";
-                            echo "<div class='d-flex align-items-center justify-content-between'>"; // Keep flex for alignment if needed
-                            echo "<div>";
-                            echo "<h5 class='card-title'>" . htmlspecialchars($day['day_name']) . "</h5>";
-                            echo "<p class='card-text'><strong>" . htmlspecialchars($day['day_option_name']) . "</strong></p>";
-                            echo "<p class='card-text'>" . nl2br(htmlspecialchars($day['day_details'])) . "</p>";
-                            echo "</div>";
-                            echo "</div>";
-                            echo "</div>";
-                            echo "</div>";
-                        }
-                    } else {
-                        echo "<p>Nenhum detalhe diário encontrado.</p>";
-                    }
-                } else {
-                    echo "<p>Nenhum plano de treino encontrado.</p>";
-                }
-                ?>
+            <!-- Secção: Informações Gerais do Plano -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light"><h4 class="mb-0 text-dark">Informações do Plano</h4></div>
+                    <div class="card-body">
+                        <p><strong>Criado em:</strong> <?= htmlspecialchars(date('d/m/Y', strtotime($workout_plan['created_at']))) ?></p>
+                        <p><strong>Treinador:</strong> <?= htmlspecialchars($workout_plan['trainer_name']) ?></p>
+                        <h6>Observações Gerais:</h6>
+                        <?php if (!empty($workout_plan['plan_details'])): ?>
+                            <p><?= nl2br(htmlspecialchars($workout_plan['plan_details'])) ?></p>
+                        <?php else: ?>
+                            <p class="text-muted fst-italic">Nenhuma observação geral.</p>
+                        <?php endif; ?>
+                    </div>
             </div>
 
-            <!-- Detalhes do Plano -->
-            <div class="tab-pane fade" id="generic-plans">
-                <?php
-                // (Conteúdo PHP e HTML existente para esta aba - sem alterações aqui)
-                 if ($client) {
-                    // Consulta o plano de treino ativo do cliente (pode reutilizar $workout_plan_info se já tiver tudo)
-                    // Fetching again here to ensure we have plan_details and workout_plan_id
-                    $stmt = $pdo->prepare("SELECT wp.plan_details, u.name AS trainer_name, wp.id AS workout_plan_id
-                                            FROM workout_plans wp
-                                            JOIN users u ON wp.trainer_id = u.id
-                                            WHERE wp.client_id = ? AND wp.is_active = 1");
-                    $stmt->execute([$client_id]);
-                    $workout_plan_details = $stmt->fetch(); // Use a different variable name
+            <!-- Secção: Plano Diário (Ações) - Accordion -->
+            <h4 class="mb-3 mt-5">Plano Diário (Ações e Instruções)</h4>
+            <?php if (!empty($workout_plan_days)): ?>
+                <div class="accordion workout-accordion" id="workoutPlanAccordion">
+                    <?php foreach ($workout_plan_days as $index => $day):
+                        $day_id_suffix = preg_replace('/[^a-zA-Z0-9]/', '', $day['day_name']) . $index;
+                        $is_first_item = ($index === 0);
+                    ?>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading<?= $day_id_suffix ?>">
+                                <button class="accordion-button <?= !$is_first_item ? 'collapsed' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $day_id_suffix ?>" aria-expanded="<?= $is_first_item ? 'true' : 'false' ?>" aria-controls="collapse<?= $day_id_suffix ?>">
+                                    <i class="fas fa-calendar-day me-2"></i>
+                                    <strong><?= htmlspecialchars($day['day_name']) ?>:</strong>&nbsp;
+                                    <span class="text-primary"><?= htmlspecialchars($day['day_option_name'] ?: 'Descanso / Outro') ?></span>
+                                </button>
+                            </h2>
+                            <div id="collapse<?= $day_id_suffix ?>" class="accordion-collapse collapse <?= $is_first_item ? 'show' : '' ?>" aria-labelledby="heading<?= $day_id_suffix ?>" data-bs-parent="#workoutPlanAccordion">
+                                <div class="accordion-body">
+                                    <?= renderActions($day['day_details']) ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php else: ?>
+                    <p class="text-muted">Nenhum detalhe diário configurado para este plano.</p>
+                <?php endif; ?>
 
-                    if ($workout_plan_details) {
-                        // Add the "Observação" title here
-                        echo "<h4>Observação:</h4>";
-                        echo "<p>" . nl2br(htmlspecialchars($workout_plan_details['plan_details'])) . "</p>";
-                        echo "<h4>Exercícios:</h4>";
+        <?php endif; ?>
 
-                        // Check if workout_plan_id exists before using it
-                        if (isset($workout_plan_details['workout_plan_id'])) {
-                            // Fetch exercises WITH muscle group and order by it
-                            $stmt = $pdo->prepare("
-                                SELECT e.name, e.video_url, e.image, e.muscle_group
-                                FROM workout_plan_exercises wpe
-                                JOIN exercises e ON wpe.exercise_id = e.id
-                                WHERE wpe.workout_plan_id = ?
-                                ORDER BY e.muscle_group, e.name -- Order by group, then name
-                            ");
-                            $stmt->execute([$workout_plan_details['workout_plan_id']]);
-                            $all_exercises = $stmt->fetchAll();
-
-                            if (count($all_exercises) > 0) {
-                                $grouped_exercises = [];
-                                // Group exercises by muscle group
-                                foreach ($all_exercises as $exercise) {
-                                    $muscle_group = $exercise['muscle_group'] ?: 'Outros'; // Assign a default group if null/empty
-                                    if (!isset($grouped_exercises[$muscle_group])) {
-                                        $grouped_exercises[$muscle_group] = [];
-                                    }
-                                    $grouped_exercises[$muscle_group][] = $exercise;
-                                }
-
-                                // Display grouped exercises
-                                foreach ($grouped_exercises as $muscle_group => $exercises_in_group) {
-                                    echo "<h5 class='mt-3'>" . htmlspecialchars($muscle_group) . "</h5>"; // Group Title
-                                    echo "<ul class='list-group mb-3'>"; // Start list for the group
-                                    foreach ($exercises_in_group as $exercise) {
-                                        echo "<li class='list-group-item d-flex align-items-center'>";
-                                        // Display exercise image
-                                        echo "<div class='me-3' style='width: 90px; height: 90px; overflow: hidden; border-radius: 5px;'>";
-                                        if ($exercise['image'] && file_exists("assets/img/exercises/" . $exercise['image'])) {
-                                            echo "<img src='assets/img/exercises/" . htmlspecialchars($exercise['image']) . "' alt='" . htmlspecialchars($exercise['name']) . "' class='img-fluid h-110 w-110 object-fit-cover' style='object-position: center;'>";
-                                        } else {
-                                            echo "<img src='assets/img/exercises/default.jpg' alt='Default Exercise Image' class='img-fluid h-100 w-100 object-fit-cover' style='object-position: center;'>";
-                                        }
-                                        echo "</div>";
-                                        // Display exercise name
-                                        echo htmlspecialchars($exercise['name']);
-
-                                        // Display video link if available
-                                        if ($exercise['video_url']) {
-                                            echo "<a href='" . htmlspecialchars($exercise['video_url']) . "' target='_blank' class='btn btn-sm btn-outline-primary ms-auto'>Ver Vídeo</a>";
-                                        }
-                                        echo "</li>";
-                                    }
-                                    echo "</ul>"; // End list for the group
-                                }
-                            } else {
-                                echo "<p>Nenhum exercício cadastrado para este plano.</p>";
-                            }
-                        } else {
-                            // This case might not be reachable if workout_plan_details exists, but good for safety
-                            echo "<p>ID do plano de treino não encontrado.</p>";
-                        }
-                    } else {
-                        echo "<p>Nenhum plano de treino ativo disponível.</p>";
-                    }
-                } else {
-                    echo "<p>Cliente não encontrado.</p>";
-                }
-                ?>
-            </div>
+        <div class="text-center mt-5 mb-4">
+            <a href="dashboard.php" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i>Voltar ao Dashboard</a>
         </div>
-        <a href="dashboard.php" class="btn btn-secondary mt-3">Voltar</a>
-    </div> <!-- Fim do container original -->
-</main> <!-- *** FIM: Wrapper <main> *** -->
 
-<script>
-    // Script JS existente para as abas (sem alterações aqui)
-    // ...
-</script>
+    </div>
+</main>
 
 <?php
 // Inclui o rodapé da página

@@ -229,6 +229,8 @@ if ($user_role == 'client') {
     include 'sidebar_nutritionist.php';
 } elseif ($user_role == 'admin') {
     include 'sidebar_admin.php';
+} elseif ($user_role == 'receptionist') { // NOVA CONDIÇÃO
+    include 'sidebar_receptionist.php'; // INCLUI A SIDEBAR CORRETA
 } else {
     // Fallback
 }
@@ -768,7 +770,7 @@ if ($user_role == 'client') {
                 <h4 style="color: var(--bs-body-color);">Mensagens</h4>
                 <div class="input-group mt-3 conversation-search">
                     <span class="input-group-text border-end-0"><i class="fas fa-search"></i></span>
-                    <input type="text" class="form-control border-start-0" placeholder="Procurar conversa...">
+                    <input type="text" id="conversation-search-input" class="form-control border-start-0" placeholder="Procurar conversa...">
                 </div>
             </div>
             <div class="conversation-list" id="conversation-list">
@@ -925,6 +927,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const filePreviewArea = document.getElementById('file-preview-area');
     const selectedFileNameSpan = document.getElementById('selected-file-name');
     const removeFileButton = document.getElementById('remove-file-button');
+    const conversationSearchInput = document.getElementById('conversation-search-input');
     const conversationListContainer = document.getElementById('conversation-list');
     const conversationListColumn = document.getElementById('conversation-list-column');
 
@@ -1247,6 +1250,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // --- Função de Pesquisa na Lista de Conversas ---
+    function filterConversations() {
+        if (!conversationSearchInput || !conversationListContainer) return;
+        const searchTerm = conversationSearchInput.value.toLowerCase();
+        const conversationItems = conversationListContainer.querySelectorAll('.conversation-item');
+
+        conversationItems.forEach(item => {
+            const conversationNameElement = item.querySelector('.conversation-name');
+            if (conversationNameElement) {
+                const conversationName = conversationNameElement.textContent.toLowerCase();
+                if (conversationName.includes(searchTerm)) {
+                    item.style.display = 'flex'; // Ou o display original do item
+                } else {
+                    item.style.display = 'none';
+                }
+            }
+        });
+    }
+
+
     // --- Funções para Anexos (Mantidas) ---
     function showSelectedFile(file) { if (!file) return; selectedFile = file; if (selectedFileNameSpan) selectedFileNameSpan.textContent = file.name; if (filePreviewArea) filePreviewArea.style.display = 'block'; if (messageInput) messageInput.placeholder = "Legenda (opcional)..."; }
     function clearSelectedFile() { selectedFile = null; if (fileInput) fileInput.value = ''; if (filePreviewArea) filePreviewArea.style.display = 'none'; if (selectedFileNameSpan) selectedFileNameSpan.textContent = ''; if (messageInput) messageInput.placeholder = "Digite sua mensagem..."; }
@@ -1401,6 +1424,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if(sendButton) sendButton.disabled = true;
         if(attachButton) attachButton.disabled = true;
     }
+
+    // Adiciona Event Listener para a pesquisa
+    if (conversationSearchInput) { conversationSearchInput.addEventListener('input', filterConversations); }
 
     window.addEventListener('beforeunload', () => { if (pollingInterval) { clearInterval(pollingInterval); } });
 

@@ -14,7 +14,10 @@ if (isset($_SESSION['user_id'])) {
         case 'nutritionist':
             header('Location: nutritionist.php');
             break;
-        case 'admin':
+        case 'receptionist':
+            header('Location: receptionist.php');
+            break;
+        case 'admin': // ADICIONADO: Redirecionamento para admin se já logado
             header('Location: admin.php');
             break;
         default:
@@ -43,7 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             // Busca o usuário no banco de dados
-            // *** MODIFICAÇÃO: Adiciona profile_picture ao SELECT ***
             $stmt = $pdo->prepare("SELECT id, name, password, role, first_login, profile_picture FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
@@ -80,13 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['name'] = $user['name'];
-                    // *** MODIFICAÇÃO: Guarda o nome do ficheiro da foto de perfil na sessão ***
                     $_SESSION['profile_picture'] = $user['profile_picture']; // Pode ser NULL se não houver foto
 
                     // Verifica se é o primeiro login (para forçar mudança de senha)
                     if ($user['first_login'] == 1) {
                         // Redireciona para a página de alteração de senha
-                        // Passa um parâmetro para indicar que é o primeiro login (opcional, mas útil)
                         header('Location: change_password.php?first_login=true');
                         exit;
                     }
@@ -102,7 +102,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         case 'nutritionist':
                             header('Location: nutritionist.php');
                             break;
-                        case 'admin':
+                        case 'receptionist':
+                            header('Location: receptionist.php');
+                            break;
+                        case 'admin': // ADICIONADO: Redirecionamento para admin após login
                             header('Location: admin.php');
                             break;
                         default:

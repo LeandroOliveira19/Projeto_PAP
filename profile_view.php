@@ -34,7 +34,8 @@ if ($viewed_user_id && !$page_error) {
                 u.role,
                 u.numero_telemovel,
                 c.id as client_table_id,
-                c.activity_level,
+                c.activity_level, 
+                c.date_of_birth,
                 c.profession
             FROM users u
             LEFT JOIN clients c ON u.id = c.user_id
@@ -78,6 +79,18 @@ function formatRoleName($role) {
     }
 }
 
+// Helper function para calcular idade (pode ser movida para um arquivo de helpers)
+function calculateAge($dob) {
+    if (!$dob || $dob === '0000-00-00') {
+        return null;
+    }
+    try {
+        $birthDate = new DateTime($dob);
+        $today = new DateTime('today');
+        return $birthDate->diff($today)->y;
+    } catch (Exception $e) { return null; }
+}
+
 ?>
 
 <main class="main-content">
@@ -118,6 +131,12 @@ function formatRoleName($role) {
 
                                 <dt class="col-sm-3">Telemóvel:</dt>
                                 <dd class="col-sm-9"><?= htmlspecialchars($profile_data['numero_telemovel'] ?? 'N/D') ?></dd>
+
+                                <?php if ($profile_data['role'] === 'client' && !empty($profile_data['date_of_birth'])): ?>
+                                    <?php $age = calculateAge($profile_data['date_of_birth']); ?>
+                                    <dt class="col-sm-3">Idade:</dt>
+                                    <dd class="col-sm-9"><?= $age !== null ? htmlspecialchars($age) . ' anos' : 'N/D' ?></dd>
+                                <?php endif; ?>
 
                                 <?php if ($profile_data['role'] === 'client' && $profile_data['client_table_id']): ?>
                                     <dt class="col-sm-3">Nível de Atividade:</dt>

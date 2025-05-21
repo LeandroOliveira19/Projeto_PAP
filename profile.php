@@ -211,6 +211,10 @@ if ($user_role === 'client') {
     if (file_exists('sidebar_admin.php')) {
         include 'sidebar_admin.php';
     } else { echo "<!-- Erro: sidebar_admin.php não encontrado. -->"; }
+} elseif ($user_role === 'receptionist') { // ADICIONADO: Condição para Recepcionista
+    if (file_exists('sidebar_receptionist.php')) {
+        include 'sidebar_receptionist.php';
+    } else { echo "<!-- Erro: sidebar_receptionist.php não encontrado. -->"; }
 } else { echo "<!-- Role desconhecido ou não definido - Nenhuma sidebar específica. -->"; }
 ?>
 

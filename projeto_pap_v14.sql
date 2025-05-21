@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 12-Maio-2025 às 18:11
+-- Tempo de geração: 21-Maio-2025 às 11:01
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.2.12
 
@@ -59,7 +59,10 @@ INSERT INTO `classes` (`id`, `name`, `description`, `trainer_id`, `schedule`, `d
 (15, 'Localizada', 'safasfafnhasijifj', 6, '2025-05-09 17:41:00', 35, 12),
 (16, 'Localizada', 'sdadsdadasdasdd', 8, '2025-05-13 18:00:00', 35, 12),
 (17, 'yoga', 'asdadsadddad', 6, '2025-05-13 17:00:00', 12, 4),
-(18, 'cycling', 'sdaasfaesdgdgsfdbefbdf', 2, '2025-05-13 16:00:00', 32, 10);
+(18, 'cycling', 'sdaasfaesdgdgsfdbefbdf', 2, '2025-05-13 16:00:00', 32, 10),
+(19, 'cycling', 'asdadsadasda', 2, '2025-05-22 18:00:00', 25, 40),
+(20, 'Localizada', 'sdsadadasdasd', 6, '2025-05-22 17:00:00', 45, 12),
+(21, 'yoga', 'dsdasddadd', 6, '2025-05-26 19:00:00', 35, 20);
 
 -- --------------------------------------------------------
 
@@ -70,20 +73,24 @@ INSERT INTO `classes` (`id`, `name`, `description`, `trainer_id`, `schedule`, `d
 CREATE TABLE `class_participants` (
   `id` int(11) NOT NULL,
   `class_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL
+  `user_id` int(11) NOT NULL,
+  `checked_in_at` datetime DEFAULT NULL COMMENT 'Timestamp do check-in',
+  `checked_in_by_user_id` int(11) DEFAULT NULL COMMENT 'ID do funcionário que fez o check-in'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Extraindo dados da tabela `class_participants`
 --
 
-INSERT INTO `class_participants` (`id`, `class_id`, `user_id`) VALUES
-(1, 1, 1),
-(2, 2, 1),
-(3, 7, 22),
-(4, 7, 4),
-(5, 8, 4),
-(6, 8, 22);
+INSERT INTO `class_participants` (`id`, `class_id`, `user_id`, `checked_in_at`, `checked_in_by_user_id`) VALUES
+(1, 1, 1, NULL, NULL),
+(2, 2, 1, NULL, NULL),
+(3, 7, 22, NULL, NULL),
+(4, 7, 4, NULL, NULL),
+(5, 8, 4, '2025-05-19 16:54:30', 26),
+(6, 8, 22, '2025-05-19 16:54:29', 26),
+(7, 17, 4, NULL, NULL),
+(9, 16, 4, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -94,6 +101,7 @@ INSERT INTO `class_participants` (`id`, `class_id`, `user_id`) VALUES
 CREATE TABLE `clients` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
+  `date_of_birth` date DEFAULT NULL,
   `weight` float DEFAULT NULL,
   `height` float DEFAULT NULL,
   `activity_level` varchar(50) DEFAULT NULL,
@@ -139,14 +147,14 @@ CREATE TABLE `clients` (
 -- Extraindo dados da tabela `clients`
 --
 
-INSERT INTO `clients` (`id`, `user_id`, `weight`, `height`, `activity_level`, `profession`, `gym_frequency`, `health_issues`, `water_percentage`, `idade_metabolica`, `morfotipo`, `ombros`, `peitoral_dorsal`, `cintura`, `abdominal`, `quadril`, `braco_direito`, `braco_esquerdo`, `coxa_direita`, `coxa_esquerda`, `perna_direita`, `perna_esquerda`, `tricipital`, `subescapular`, `bicipital`, `peitoral`, `axilar_media`, `abdominal_plicometria`, `supra_iliaca`, `coxa`, `geminal`, `visceral_fat_index`, `bone_mass_kg`, `lean_mass_kg`, `muscle_mass_kg`, `proteinas`, `fat_mass_kg`, `fat_mass_percentage`, `gordura_subcutanea`, `lean_mass_percentage`, `last_assessment_date`) VALUES
-(1, 1, 75.5, 1.8, 'Moderado', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(2, 4, 85, 1.65, 'Leve', 'Mecânico', '3 vezes por semana', 'tenho a rotula desfrianbrada', 58.50, 28, 'Mesomorfo', 40.0, 30.0, 36.0, 123.0, 23.0, 12.0, 24.0, 13.0, 23.0, 324.0, 324.0, 22.0, 11.0, 33.0, 44.0, 23.0, 12.0, 32.0, 43.0, 32.0, 5, 2.80, 60.50, 55.20, 12.30, 15.80, 22.50, 18.20, 77.50, '2025-04-23'),
-(3, 16, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(4, 21, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(5, 22, NULL, NULL, '', 'Encanador', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(6, 23, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(7, 24, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `clients` (`id`, `user_id`, `date_of_birth`, `weight`, `height`, `activity_level`, `profession`, `gym_frequency`, `health_issues`, `water_percentage`, `idade_metabolica`, `morfotipo`, `ombros`, `peitoral_dorsal`, `cintura`, `abdominal`, `quadril`, `braco_direito`, `braco_esquerdo`, `coxa_direita`, `coxa_esquerda`, `perna_direita`, `perna_esquerda`, `tricipital`, `subescapular`, `bicipital`, `peitoral`, `axilar_media`, `abdominal_plicometria`, `supra_iliaca`, `coxa`, `geminal`, `visceral_fat_index`, `bone_mass_kg`, `lean_mass_kg`, `muscle_mass_kg`, `proteinas`, `fat_mass_kg`, `fat_mass_percentage`, `gordura_subcutanea`, `lean_mass_percentage`, `last_assessment_date`) VALUES
+(1, 1, NULL, 75.5, 1.8, 'Moderado', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 4, '1979-08-19', 85, 1.65, 'Leve', 'Mecânico', '3 vezes por semana', 'tenho a rotula desfrianbrada', 58.50, 28, 'Mesomorfo', 40.0, 30.0, 36.0, 123.0, 23.0, 12.0, 24.0, 13.0, 23.0, 324.0, 324.0, 22.0, 11.0, 33.0, 44.0, 23.0, 12.0, 32.0, 43.0, 32.0, 5, 2.80, 60.50, 55.20, 12.30, 15.80, 22.50, 18.20, 77.50, '2025-04-23'),
+(3, 16, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(4, 21, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(5, 22, NULL, NULL, NULL, '', 'Encanador', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, 23, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(7, 24, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -182,8 +190,10 @@ CREATE TABLE `diet_plans` (
   `id` int(11) NOT NULL,
   `client_id` int(11) NOT NULL,
   `nutritionist_id` int(11) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
   `plan_details` text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `is_active` tinyint(1) DEFAULT 0 COMMENT 'Indica se o plano de dieta está ativo (1=Sim, 0=Não)'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -191,8 +201,62 @@ CREATE TABLE `diet_plans` (
 -- Extraindo dados da tabela `diet_plans`
 --
 
-INSERT INTO `diet_plans` (`id`, `client_id`, `nutritionist_id`, `plan_details`, `created_at`, `is_active`) VALUES
-(1, 1, 3, 'Café da manhã: Omelete com vegetais; Almoço: Frango grelhado com arroz integral; Jantar: Salada de quinoa.', '2025-02-16 16:00:41', 1);
+INSERT INTO `diet_plans` (`id`, `client_id`, `nutritionist_id`, `title`, `plan_details`, `created_at`, `updated_at`, `is_active`) VALUES
+(1, 1, 3, NULL, 'Café da manhã: Omelete com vegetais; Almoço: Frango grelhado com arroz integral; Jantar: Salada de quinoa.', '2025-02-16 16:00:41', '2025-05-16 11:24:56', 1),
+(3, 2, 7, 'Plano de perde de massa', 'adssadadsdadasdasdad', '2025-05-16 10:53:12', '2025-05-16 11:46:45', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `diet_plan_meals`
+--
+
+CREATE TABLE `diet_plan_meals` (
+  `id` int(11) NOT NULL,
+  `diet_plan_id` int(11) NOT NULL,
+  `meal_name` varchar(255) NOT NULL COMMENT 'Ex: Dia 1 - Pequeno-almoço, Dia 1 - Almoço',
+  `meal_order` int(11) DEFAULT 0 COMMENT 'Ordem da refeição dentro do plano',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `diet_plan_meals`
+--
+
+INSERT INTO `diet_plan_meals` (`id`, `diet_plan_id`, `meal_name`, `meal_order`, `created_at`) VALUES
+(7, 3, 'Dia 1 - Pequeno-almoço', 0, '2025-05-16 11:49:23'),
+(8, 3, 'Dia 1 - Lanche Manhã', 1, '2025-05-16 11:49:23'),
+(9, 3, 'Dia 1 - Almoço', 2, '2025-05-16 11:49:23'),
+(10, 3, 'Dia 1 - Lanche Tarde', 3, '2025-05-16 11:49:23'),
+(11, 3, 'Dia 1 - Jantar', 4, '2025-05-16 11:49:23'),
+(12, 3, 'Dia 1 - Ceia', 5, '2025-05-16 11:49:23');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `diet_plan_meal_foods`
+--
+
+CREATE TABLE `diet_plan_meal_foods` (
+  `id` int(11) NOT NULL,
+  `diet_plan_meal_id` int(11) NOT NULL,
+  `food_id` int(11) NOT NULL,
+  `quantity` decimal(10,2) NOT NULL,
+  `notes` text DEFAULT NULL COMMENT 'Notas específicas para este alimento nesta refeição',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `diet_plan_meal_foods`
+--
+
+INSERT INTO `diet_plan_meal_foods` (`id`, `diet_plan_meal_id`, `food_id`, `quantity`, `notes`, `created_at`) VALUES
+(7, 7, 19, 2.00, '', '2025-05-16 11:49:23'),
+(8, 8, 2, 1.00, '', '2025-05-16 11:49:23'),
+(9, 9, 14, 2.00, '', '2025-05-16 11:49:23'),
+(10, 10, 14, 1.00, '', '2025-05-16 11:49:23'),
+(11, 11, 16, 2.00, '', '2025-05-16 11:49:23'),
+(12, 12, 17, 1.00, '', '2025-05-16 11:49:23');
 
 -- --------------------------------------------------------
 
@@ -530,7 +594,7 @@ CREATE TABLE `users` (
   `email` varchar(100) NOT NULL,
   `numero_telemovel` varchar(25) DEFAULT NULL COMMENT 'Número de telemóvel do utilizador',
   `password` varchar(255) NOT NULL,
-  `role` enum('client','trainer','nutritionist','admin') NOT NULL,
+  `role` enum('client','trainer','nutritionist','admin','receptionist') DEFAULT NULL,
   `token` varchar(255) DEFAULT NULL,
   `reset_token` varchar(255) DEFAULT NULL,
   `reset_token_expires_at` datetime DEFAULT NULL,
@@ -546,19 +610,21 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `name`, `email`, `numero_telemovel`, `password`, `role`, `token`, `reset_token`, `reset_token_expires_at`, `first_login`, `created_at`, `profile_picture`) VALUES
 (1, 'João Silva', 'joao@gmail.com', NULL, '$2y$10$lh.W5KbiZP/pR26lenTsaO/B5fR542orbtAlxfaWk/y16UgrPsIp2', 'client', NULL, NULL, NULL, 0, '2025-02-16 16:00:40', NULL),
 (2, 'Maria Souza', 'maria@gmail.com', '91829181', '$2y$10$463JYEX113pg5x1.aUaMd.1nIjnnHxZJ/ziE5o18bXJ3Do2HmTeyy', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 16:00:40', 'user_2_1746632583.png'),
-(3, 'Carlos Oliveira', 'carlos@gmail.com', NULL, '$2y$10$ky3zxCNaI2/olPuWNG8icu7ihDtYj94JaBFMJFphOMc6vIWwtJNm.', 'nutritionist', NULL, NULL, NULL, 0, '2025-02-16 16:00:40', NULL),
+(3, 'Carlos Oliveira', 'carlos@gmail.com', NULL, '$2y$10$ky3zxCNaI2/olPuWNG8icu7ihDtYj94JaBFMJFphOMc6vIWwtJNm.', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 16:00:40', NULL),
 (4, 'Nelo Rodrigues da silva chapeiro', 'Nelo@gmail.com', '917688818', '$2y$10$Ya4lZjtt5aMJi1nZm9VW4O9quz16SDR5okERVFHVfSLOgbIisYAwC', 'client', NULL, NULL, NULL, 0, '2025-02-16 16:42:55', 'user_4_1744899053.png'),
 (6, 'Claudia', 'claudia@gmail.com', '913677215', '$2y$10$QrMlKOAR98ERl97o/rMoIenm5r7q0dGmnRa1WzQir5kHS.h6e0Mn2', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 17:27:51', 'user_6_1744907164.png'),
 (7, 'Silvia', 'silvia@gmail.com', '914123555', '$2y$10$sp7sMfxCBTptdgIKjLf0iead9WZQQvzYiW9GiiqhpuNI/qeHehSY6', 'nutritionist', NULL, NULL, NULL, 0, '2025-02-16 17:27:51', 'user_7_1744907663.png'),
-(8, 'claudio', 'claudio@gmail.com', NULL, 'claudio123', 'trainer', NULL, NULL, NULL, 1, '2025-02-16 17:57:51', NULL),
+(8, 'claudio', 'claudio@gmail.com', NULL, 'claudio123', '', NULL, NULL, NULL, 1, '2025-02-16 17:57:51', NULL),
 (10, 'Personal Trainer', 'trainer@example.com', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'trainer', NULL, NULL, NULL, 1, '2025-02-16 18:23:39', NULL),
 (11, 'Nutricionista', 'nutritionist@example.com', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'nutritionist', NULL, NULL, NULL, 1, '2025-02-16 18:23:39', NULL),
-(12, 'leandro', 'l2androliveir3@gmail.com', NULL, '$2y$10$GQ/F52GETp2VA3dYEKb55ODsmdzlz0Ue8oLVNdq5db7YklBEg/Hlq', 'admin', NULL, NULL, NULL, 0, '2025-02-22 10:30:35', NULL),
+(12, 'leandro', 'l2androliveir3@gmail.com', NULL, '$2y$10$J/H/UXhO4Zh7f34SCDlSou6fsqbq6xqoa3MbLUXUN0K2aZNFyaHJC', 'admin', NULL, NULL, NULL, 0, '2025-02-22 10:30:35', NULL),
 (16, 'Fabio', 'fabio.oliveira.1719@gmail.com', NULL, '$2y$10$kfsBwjbI1oyZRutY0rjXNOVAeYINuqInUr0eyEgtjfB4dNez/8D4S', 'client', '8f87cb65849c9b33b7a2b0a5f5849040f974bfd7335d8fe398d55ca847619b03864f276127ce05b47702f526ae36520f9506', NULL, NULL, 1, '2025-03-15 14:11:35', NULL),
 (21, 'Marcelo', '2mapo.01.01.2007@gmail.com', NULL, '$2y$10$0QvpZM6lpJ3kKRFWU39E1O/tP4xbnnX8CT8oD6Jny7QOszZicpWfK', 'client', '1adb618811d0ad173cf0727a40561dfac3bda92241e5ebcf5fc924d01bfeb8cf6829d153d70dafb90dffd59ff2b7928da9b6', NULL, NULL, 1, '2025-03-15 14:53:00', NULL),
 (22, 'Arbusto', 'arbustosr116@gmail.com', '921291191', '$2y$10$msl0AcXBrpFVOKSU7gVeg.hkpuqmUTYrw/VZxniRz9WyNvkqgn2qK', 'client', NULL, NULL, NULL, 0, '2025-03-15 14:55:43', 'user_22_1746634335.png'),
 (23, 'Leonardo', 'leofsgomes.2007@gmail.com', NULL, '$2y$10$/UlDkdcXgPXOmtFHqE5e2OzsVyY5wk2np9Yvtw1Yyzj37f475jN5u', 'client', 'af6410bd5e87419eddb0bb9f789cbb9ad5cf69ce0d7f2dbf66d6650d83b52a48ec6361fa8870d069dd72f970a75aba99a537', NULL, NULL, 1, '2025-03-20 14:39:26', NULL),
-(24, 'Hugo', 'hugotestes621@gmail.com', NULL, '$2y$10$A6Hth3D57BCox6Tiq1HA2u4xYYxiQi1m2xJi2AeUktqkQrd6ZhUI6', 'client', 'f1e949afc12cfd721ac34496600c93306a8fa54dff3702d8c27e8bce335c0d88458fd2ab4aa6d70118d4de9fb52ae5aed942', NULL, NULL, 1, '2025-05-02 14:11:43', NULL);
+(24, 'Hugo', 'hugotestes621@gmail.com', NULL, '$2y$10$A6Hth3D57BCox6Tiq1HA2u4xYYxiQi1m2xJi2AeUktqkQrd6ZhUI6', 'client', 'f1e949afc12cfd721ac34496600c93306a8fa54dff3702d8c27e8bce335c0d88458fd2ab4aa6d70118d4de9fb52ae5aed942', NULL, NULL, 1, '2025-05-02 14:11:43', NULL),
+(25, 'diogo', 'diogomicaelpinto6@gmail.com', NULL, '$2y$10$RsLAJ8V.idtdP2rrErNwPOIKWanIqyISoG4jhlcL9nOdBi2vYnsY.', 'receptionist', '157b221a72236923e7b47a11960aeb04546c8b2c21e2799cc494706978e04db2c6039aeece6f640e1b3cef9673c88fd476e4', NULL, NULL, 1, '2025-05-19 12:01:31', NULL),
+(26, 'Orlando Rodrigues', 'papmywellness@gmail.com', NULL, '$2y$10$u/7WBmhrwRA01alOGXuineWdSHGIHpOHxwl7UdnoFGqPcut5x4yre', 'receptionist', NULL, NULL, NULL, 0, '2025-05-19 12:13:21', NULL);
 
 -- --------------------------------------------------------
 
@@ -613,7 +679,9 @@ INSERT INTO `workout_plans` (`id`, `client_id`, `trainer_id`, `plan_details`, `c
 (11, 2, 6, 'Deve beber mais líquidos , já que sente muita sede.', '2025-04-07 10:03:05', 1),
 (12, 1, 6, '', '2025-04-14 10:28:20', 0),
 (13, 5, 2, 'deverá deixar de camperar', '2025-04-14 10:51:27', 1),
-(14, 1, 6, '', '2025-04-17 15:53:08', 1);
+(14, 1, 2, '', '2025-04-17 15:53:08', 0),
+(15, 1, 2, '', '2025-05-14 11:48:25', 0),
+(16, 1, 2, 'sadasadadsad', '2025-05-14 11:51:36', 1);
 
 -- --------------------------------------------------------
 
@@ -641,13 +709,6 @@ INSERT INTO `workout_plan_days` (`id`, `workout_plan_id`, `day_name`, `day_detai
 (26, 10, 'Dia 5', NULL, 7),
 (27, 10, 'Dia 6', NULL, 5),
 (28, 10, 'Dia 7', NULL, 5),
-(43, 11, 'Dia 1', NULL, 3),
-(44, 11, 'Dia 2', NULL, 4),
-(45, 11, 'Dia 3', NULL, 6),
-(46, 11, 'Dia 4', NULL, 5),
-(47, 11, 'Dia 5', NULL, 2),
-(48, 11, 'Dia 6', NULL, 5),
-(49, 11, 'Dia 7', NULL, 5),
 (50, 12, 'Dia 1', '', 1),
 (51, 12, 'Dia 2', '', 1),
 (52, 12, 'Dia 3', '', 1),
@@ -668,7 +729,28 @@ INSERT INTO `workout_plan_days` (`id`, `workout_plan_id`, `day_name`, `day_detai
 (74, 14, 'Dia 4', '', 1),
 (75, 14, 'Dia 5', '', 1),
 (76, 14, 'Dia 6', '', 1),
-(77, 14, 'Dia 7', '', 1);
+(77, 14, 'Dia 7', '', 1),
+(92, 15, 'Dia 1', '', 1),
+(93, 15, 'Dia 2', '', 1),
+(94, 15, 'Dia 3', '', 1),
+(95, 15, 'Dia 4', '', 1),
+(96, 15, 'Dia 5', '', 1),
+(97, 15, 'Dia 6', '', 1),
+(98, 15, 'Dia 7', '', 1),
+(99, 16, 'Dia 1', '', 1),
+(100, 16, 'Dia 2', '', 1),
+(101, 16, 'Dia 3', '', 1),
+(102, 16, 'Dia 4', '', 1),
+(103, 16, 'Dia 5', '', 1),
+(104, 16, 'Dia 6', '', 1),
+(105, 16, 'Dia 7', '', 1),
+(113, 11, 'Dia 1', '[{\"type\":\"sets_reps\",\"data\":{\"sets\":\"3\",\"reps\":\"8-12\",\"notes\":\"Aumentar a cada rep o peso.\"}},{\"type\":\"rest_time\",\"data\":{\"time\":\"30\",\"unit\":\"segundos\"}}]', 3),
+(114, 11, 'Dia 2', '[]', 5),
+(115, 11, 'Dia 3', '[{\"type\":\"sets_reps\",\"data\":{\"sets\":\"3\",\"reps\":\"10-12\",\"notes\":\"Até a falha, com aumento de peso a cada rep\"}},{\"type\":\"rest_time\",\"data\":{\"time\":\"15\",\"unit\":\"segundos\"}}]', 2),
+(116, 11, 'Dia 4', '[]', 6),
+(117, 11, 'Dia 5', '[{\"type\":\"sets_reps\",\"data\":{\"sets\":\"3\",\"reps\":\"8-10\",\"notes\":\"Aumentar o peso gradualmente e na ultima ir ate a falha\"}}]', 1),
+(118, 11, 'Dia 6', '[{\"type\":\"sets_reps\",\"data\":{\"sets\":\"5\",\"reps\":\"20-50\",\"notes\":\"Ate a falha\"}}]', 7),
+(119, 11, 'Dia 7', '[]', 5);
 
 -- --------------------------------------------------------
 
@@ -707,48 +789,68 @@ INSERT INTO `workout_plan_exercises` (`id`, `workout_plan_id`, `exercise_id`) VA
 (64, 10, 8),
 (65, 10, 9),
 (66, 10, 10),
-(106, 11, 11),
-(107, 11, 12),
-(108, 11, 13),
-(109, 11, 14),
-(110, 11, 15),
-(111, 11, 16),
-(112, 11, 17),
-(113, 11, 18),
-(114, 11, 19),
-(115, 11, 20),
-(116, 11, 21),
-(117, 11, 22),
-(118, 11, 23),
-(119, 11, 24),
-(120, 11, 25),
-(122, 11, 27),
-(123, 11, 28),
-(124, 11, 29),
-(125, 11, 30),
-(126, 11, 31),
-(127, 11, 32),
-(128, 11, 33),
-(129, 11, 34),
-(130, 11, 35),
-(131, 11, 36),
-(132, 11, 37),
-(133, 11, 38),
-(134, 11, 39),
-(135, 11, 40),
-(136, 11, 41),
-(137, 11, 42),
-(139, 11, 44),
-(140, 11, 45),
-(141, 11, 46),
-(142, 11, 47),
-(143, 11, 48),
-(144, 11, 49),
 (145, 13, 1),
 (146, 13, 2),
 (147, 13, 3),
 (148, 13, 4),
-(149, 13, 5);
+(149, 13, 5),
+(224, 15, 22),
+(225, 15, 23),
+(226, 15, 24),
+(227, 15, 25),
+(228, 15, 27),
+(229, 16, 1),
+(230, 16, 2),
+(231, 16, 3),
+(232, 16, 4),
+(233, 16, 5),
+(234, 16, 6),
+(235, 16, 7),
+(236, 16, 8),
+(237, 16, 9),
+(238, 16, 10),
+(239, 16, 11),
+(240, 16, 12),
+(241, 16, 13),
+(242, 16, 14),
+(243, 16, 15),
+(281, 11, 34),
+(282, 11, 16),
+(283, 11, 33),
+(284, 11, 31),
+(285, 11, 13),
+(286, 11, 32),
+(287, 11, 18),
+(288, 11, 39),
+(289, 11, 40),
+(290, 11, 11),
+(291, 11, 20),
+(292, 11, 30),
+(293, 11, 12),
+(294, 11, 14),
+(295, 11, 28),
+(296, 11, 47),
+(297, 11, 49),
+(298, 11, 48),
+(299, 11, 27),
+(300, 11, 44),
+(301, 11, 46),
+(302, 11, 24),
+(303, 11, 45),
+(304, 11, 23),
+(305, 11, 22),
+(306, 11, 15),
+(307, 11, 25),
+(308, 11, 35),
+(309, 11, 29),
+(310, 11, 37),
+(311, 11, 21),
+(312, 11, 36),
+(313, 11, 17),
+(314, 11, 38),
+(315, 11, 41),
+(316, 11, 19),
+(317, 11, 42);
 
 --
 -- Índices para tabelas despejadas
@@ -767,7 +869,8 @@ ALTER TABLE `classes`
 ALTER TABLE `class_participants`
   ADD PRIMARY KEY (`id`),
   ADD KEY `class_id` (`class_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `fk_checked_in_by` (`checked_in_by_user_id`);
 
 --
 -- Índices para tabela `clients`
@@ -789,6 +892,21 @@ ALTER TABLE `diet_plans`
   ADD PRIMARY KEY (`id`),
   ADD KEY `client_id` (`client_id`),
   ADD KEY `nutritionist_id` (`nutritionist_id`);
+
+--
+-- Índices para tabela `diet_plan_meals`
+--
+ALTER TABLE `diet_plan_meals`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_diet_plan_meals_diet_plan_id` (`diet_plan_id`);
+
+--
+-- Índices para tabela `diet_plan_meal_foods`
+--
+ALTER TABLE `diet_plan_meal_foods`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_diet_plan_meal_foods_meal_id` (`diet_plan_meal_id`),
+  ADD KEY `idx_diet_plan_meal_foods_food_id` (`food_id`);
 
 --
 -- Índices para tabela `exercises`
@@ -903,13 +1021,13 @@ ALTER TABLE `workout_plan_exercises`
 -- AUTO_INCREMENT de tabela `classes`
 --
 ALTER TABLE `classes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT de tabela `class_participants`
 --
 ALTER TABLE `class_participants`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT de tabela `clients`
@@ -927,7 +1045,19 @@ ALTER TABLE `day_options`
 -- AUTO_INCREMENT de tabela `diet_plans`
 --
 ALTER TABLE `diet_plans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de tabela `diet_plan_meals`
+--
+ALTER TABLE `diet_plan_meals`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT de tabela `diet_plan_meal_foods`
+--
+ALTER TABLE `diet_plan_meal_foods`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT de tabela `exercises`
@@ -981,7 +1111,7 @@ ALTER TABLE `recommendations`
 -- AUTO_INCREMENT de tabela `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT de tabela `user_favorite_classes`
@@ -999,19 +1129,19 @@ ALTER TABLE `workout_history`
 -- AUTO_INCREMENT de tabela `workout_plans`
 --
 ALTER TABLE `workout_plans`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT de tabela `workout_plan_days`
 --
 ALTER TABLE `workout_plan_days`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=78;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
 
 --
 -- AUTO_INCREMENT de tabela `workout_plan_exercises`
 --
 ALTER TABLE `workout_plan_exercises`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=318;
 
 --
 -- Restrições para despejos de tabelas
@@ -1029,6 +1159,7 @@ ALTER TABLE `classes`
 ALTER TABLE `class_participants`
   ADD CONSTRAINT `class_participants_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `class_participants_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_checked_in_by` FOREIGN KEY (`checked_in_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_class_id` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
@@ -1044,6 +1175,19 @@ ALTER TABLE `clients`
 ALTER TABLE `diet_plans`
   ADD CONSTRAINT `diet_plans_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `diet_plans_ibfk_2` FOREIGN KEY (`nutritionist_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Limitadores para a tabela `diet_plan_meals`
+--
+ALTER TABLE `diet_plan_meals`
+  ADD CONSTRAINT `fk_diet_plan_meals_diet_plans` FOREIGN KEY (`diet_plan_id`) REFERENCES `diet_plans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Limitadores para a tabela `diet_plan_meal_foods`
+--
+ALTER TABLE `diet_plan_meal_foods`
+  ADD CONSTRAINT `fk_diet_plan_meal_foods_foods` FOREIGN KEY (`food_id`) REFERENCES `foods` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_diet_plan_meal_foods_meals` FOREIGN KEY (`diet_plan_meal_id`) REFERENCES `diet_plan_meals` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Limitadores para a tabela `foods`

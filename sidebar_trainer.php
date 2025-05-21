@@ -24,7 +24,11 @@ if (!isset($active_page)) {
                     <i class="fas fa-users fa-fw"></i><span>Meus Clientes</span>
                 </a>
             </li>
-            <!-- ************************** -->
+            <li>
+                <a href="my_classes_trainer.php" class="<?= ($active_page == 'my_classes_trainer.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-calendar-check fa-fw"></i><span>Minhas Aulas</span>
+                </a>
+            </li>
             <li>
                 <a href="add_workout_plan.php" class="<?= ($active_page == 'add_workout_plan.php') ? 'active' : ''; ?>">
                     <i class="fas fa-plus-square fa-fw"></i><span>Adicionar Plano</span>

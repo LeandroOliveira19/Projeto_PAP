@@ -37,67 +37,66 @@ $nutritionist_id = $_SESSION['user_id']; // ID do nutricionista logado
 
         <div class="row">
             <div class="col-md-12">
-                <h4>Clientes com Planos Ativos</h4>
+                <h4>Ações Rápidas</h4>
                 <a href="add_diet_plan.php" class="btn btn-success mb-3"><i class="fas fa-plus me-1"></i>Adicionar Novo Plano</a>
                 <a href="client_list_nutritionist.php" class="btn btn-secondary mb-3"><i class="fas fa-users me-1"></i>Ver Todos os Clientes</a>
 
                 <!-- Tabela Responsiva -->
+                <h5 class="mt-4">Clientes Sem Plano Alimentar Ativo (Comigo)</h5>
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
                                 <th>Cliente</th>
-                                <th>Plano Alimentar Ativo</th>
+                                <th>Email</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php
                             try {
-                                // Busca clientes que têm um plano ATIVO associado a este nutricionista
-                                // A coluna dp.is_active AGORA DEVE EXISTIR
+                                // Busca clientes que NÃO têm um plano ATIVO associado a este nutricionista
                                 $stmt = $pdo->prepare("
                                     SELECT
                                         c.id AS client_id,
-                                        u.id AS client_user_id, -- ID do usuário cliente (para chat)
+                                        u.id AS client_user_id,
                                         u.name AS client_name,
-                                        dp.id AS diet_plan_id,
-                                        dp.plan_details,
-                                        dp.is_active -- Seleciona a coluna
+                                        u.email AS client_email
                                     FROM clients c
                                     JOIN users u ON c.user_id = u.id
-                                    JOIN diet_plans dp ON c.id = dp.client_id -- JOIN normal, pois queremos apenas os que têm plano
-                                    WHERE dp.nutritionist_id = :nutritionist_id
-                                      AND dp.is_active = 1 -- Filtra apenas os planos ativos
+                                    WHERE u.role = 'client' AND NOT EXISTS (
+                                        SELECT 1
+                                        FROM diet_plans dp
+                                        WHERE dp.client_id = c.id
+                                          AND dp.nutritionist_id = :nutritionist_id
+                                          AND dp.is_active = 1
+                                    )
                                     ORDER BY u.name
                                 ");
                                 $stmt->execute(['nutritionist_id' => $nutritionist_id]);
-                                $clients_with_active_plans = $stmt->fetchAll();
+                                $clients_without_active_plan = $stmt->fetchAll();
 
-                                if (count($clients_with_active_plans) > 0) {
-                                    foreach ($clients_with_active_plans as $client) {
+                                if (count($clients_without_active_plan) > 0) {
+                                    foreach ($clients_without_active_plan as $client) {
                                         echo "<tr>";
                                         echo "<td>" . htmlspecialchars($client['client_name']) . "</td>";
+                                        echo "<td>" . htmlspecialchars($client['client_email']) . "</td>";
                                         echo "<td>";
-                                        // Mostra trecho do plano
-                                        $details_preview = mb_substr(strip_tags($client['plan_details']), 0, 100);
-                                        echo htmlspecialchars($details_preview) . (mb_strlen($client['plan_details']) > 100 ? '...' : '');
-                                        echo "</td>";
-                                        echo "<td>";
-                                        // Botão para editar o plano ativo
-                                        echo "<a href='edit_diet_plan.php?client_id=" . $client['client_id'] . "&diet_plan_id=" . $client['diet_plan_id'] . "' class='btn btn-warning btn-sm me-1' title='Editar Plano Ativo'><i class='fas fa-edit'></i></a>";
+                                        // Botão para adicionar plano alimentar
+                                        echo "<a href='add_diet_plan.php?client_id=" . $client['client_id'] . "' class='btn btn-primary btn-sm me-1' title='Adicionar Plano Alimentar'><i class='fas fa-plus'></i> <span class='d-none d-md-inline'>Plano</span></a>";
+                                        // Botão para Ver Perfil
+                                        echo "<a href='profile_view.php?user_id=" . $client['client_user_id'] . "' class='btn btn-secondary btn-sm me-1' title='Ver Perfil'><i class='fas fa-user'></i> <span class='d-none d-md-inline'>Perfil</span></a>";
                                         // Botão para Chat
-                                        echo "<a href='chat.php?user_id=" . $client['client_user_id'] . "' class='btn btn-info btn-sm' title='Conversar com Cliente'><i class='fas fa-comments'></i></a>";
-                                        // Poderia adicionar botão para desativar plano aqui
+                                        echo "<a href='chat.php?user_id=" . $client['client_user_id'] . "' class='btn btn-success btn-sm' title='Conversar com Cliente'><i class='fas fa-comments'></i> <span class='d-none d-md-inline'>Chat</span></a>";
                                         echo "</td>";
                                         echo "</tr>";
                                     }
                                 } else {
-                                     echo "<tr><td colspan='3' class='text-center text-muted'>Nenhum cliente com plano alimentar ativo atribuído a você.</td></tr>";
+                                     echo "<tr><td colspan='3' class='text-center text-muted'>Todos os clientes já têm um plano alimentar ativo consigo ou não existem clientes registados.</td></tr>";
                                 }
                             } catch (PDOException $e) {
                                 // Loga o erro e mostra mensagem de erro na tabela
-                                error_log("Erro ao buscar clientes com planos ativos para nutricionista: " . $e->getMessage());
+                                error_log("Erro ao buscar clientes sem plano ativo para nutricionista: " . $e->getMessage());
                                 echo "<tr><td colspan='3' class='text-center text-danger'>Erro ao carregar lista de clientes.</td></tr>";
                             }
                             ?>

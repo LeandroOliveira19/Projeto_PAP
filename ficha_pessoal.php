@@ -26,7 +26,7 @@ try {
         SELECT
             u.name, u.email, u.profile_picture, u.numero_telemovel, -- User data
             c.id as client_table_id, c.activity_level, -- client_table_id é o ID da tabela clients
-            c.profession, c.gym_frequency, c.health_issues, -- Outros campos do cliente (membership_number foi removido)
+            c.profession, c.gym_frequency, c.health_issues, c.date_of_birth, -- Outros campos do cliente (membership_number foi removido)
             latest_assessment.* -- Seleciona todas as colunas da subquery (última avaliação)
         FROM users u
         JOIN clients c ON u.id = c.user_id
@@ -66,6 +66,18 @@ function displayInfo($value, $unit = '', $decimals = 1, $na_text = '<span class=
     return $na_text;
 }
 
+// Helper function para calcular idade (pode ser movida para um arquivo de helpers se usada em mais locais)
+function calculateAge($dob) {
+    if (!$dob || $dob === '0000-00-00') {
+        return null;
+    }
+    try {
+        $birthDate = new DateTime($dob);
+        $today = new DateTime('today');
+        return $birthDate->diff($today)->y;
+    } catch (Exception $e) { return null; }
+}
+
 ?>
 
 <?php include 'sidebar_client.php'; ?>
@@ -98,6 +110,12 @@ function displayInfo($value, $unit = '', $decimals = 1, $na_text = '<span class=
 
                         <dt class="col-sm-3">Telemóvel:</dt>
                         <dd class="col-sm-9"><?= displayInfo($client_data['numero_telemovel'] ?? null) ?></dd>
+
+                        <dt class="col-sm-3">Data de Nascimento:</dt>
+                        <dd class="col-sm-9"><?= isset($client_data['date_of_birth']) ? displayInfo(date('d/m/Y', strtotime($client_data['date_of_birth']))) : displayInfo(null) ?></dd>
+
+                        <dt class="col-sm-3">Idade:</dt>
+                        <dd class="col-sm-9"><?= isset($client_data['date_of_birth']) ? displayInfo(calculateAge($client_data['date_of_birth']), ' anos', 0) : displayInfo(null) ?></dd>
 
                         <!-- Altura e Peso agora vêm da ÚLTIMA avaliação -->
                         <dt class="col-sm-3">Altura (última):</dt>
