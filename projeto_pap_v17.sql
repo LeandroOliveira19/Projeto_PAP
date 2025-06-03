@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 21-Maio-2025 às 11:01
+-- Tempo de geração: 03-Jun-2025 às 15:41
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.2.12
 
@@ -20,6 +20,71 @@ SET time_zone = "+00:00";
 --
 -- Banco de dados: `projeto_pap`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `access_delegations`
+--
+
+CREATE TABLE `access_delegations` (
+  `id` int(11) NOT NULL,
+  `granting_admin_id` int(11) NOT NULL COMMENT 'ID of the admin granting access (users.id)',
+  `delegated_user_id` int(11) NOT NULL COMMENT 'ID of the user receiving access (users.id)',
+  `expires_at` datetime NOT NULL COMMENT 'Timestamp when the delegation expires',
+  `delegated_permissions` text DEFAULT NULL COMMENT 'JSON array of permission keys',
+  `is_active` tinyint(1) DEFAULT 1 COMMENT 'Whether the delegation is currently active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'When the delegation was created',
+  `revoked_at` datetime DEFAULT NULL COMMENT 'When the delegation was manually revoked'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `access_delegations`
+--
+
+INSERT INTO `access_delegations` (`id`, `granting_admin_id`, `delegated_user_id`, `expires_at`, `delegated_permissions`, `is_active`, `created_at`, `revoked_at`) VALUES
+(1, 12, 26, '2025-06-02 16:41:16', NULL, 0, '2025-06-02 14:36:16', '2025-06-02 16:08:59'),
+(2, 12, 26, '2025-06-02 17:14:18', '[\"manage_trainers\",\"manage_nutritionists\"]', 0, '2025-06-02 15:09:18', '2025-06-02 16:23:01'),
+(3, 12, 26, '2025-06-02 17:28:15', '[\"manage_trainers\",\"manage_nutritionists\",\"manage_receptionists\"]', 0, '2025-06-02 15:23:15', '2025-06-02 16:34:12'),
+(4, 12, 26, '2025-06-02 16:40:36', '[\"manage_trainers\",\"manage_nutritionists\",\"manage_receptionists\"]', 0, '2025-06-02 15:35:36', '2025-06-02 16:43:50'),
+(5, 12, 26, '2025-06-02 16:48:50', '[\"manage_trainers\",\"manage_nutritionists\",\"manage_receptionists\"]', 0, '2025-06-02 15:43:50', '2025-06-02 16:49:15'),
+(6, 12, 26, '2025-06-02 16:54:15', '[\"manage_trainers\",\"manage_nutritionists\",\"manage_receptionists\"]', 0, '2025-06-02 15:49:15', '2025-06-02 16:54:39'),
+(7, 12, 26, '2025-06-02 16:59:39', '[\"manage_trainers\",\"manage_nutritionists\",\"manage_receptionists\"]', 0, '2025-06-02 15:54:39', '2025-06-02 17:00:21'),
+(8, 12, 26, '2025-06-02 17:05:21', '[\"manage_trainers\",\"manage_nutritionists\",\"manage_receptionists\"]', 1, '2025-06-02 16:00:21', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `achievements`
+--
+
+CREATE TABLE `achievements` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  `icon` varchar(50) DEFAULT 'fas fa-medal',
+  `points` int(11) DEFAULT 10,
+  `criteria_type` varchar(50) DEFAULT NULL,
+  `criteria_value` varchar(255) DEFAULT NULL,
+  `is_manual_claim` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 se a conquista pode ser reivindicada manualmente pelo cliente',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `achievements`
+--
+
+INSERT INTO `achievements` (`id`, `name`, `description`, `icon`, `points`, `criteria_type`, `criteria_value`, `is_manual_claim`, `created_at`) VALUES
+(1, 'Pioneiro Fitness', 'Completou o seu primeiro treino na plataforma!', 'fas fa-flag-checkered', 10, 'first_workout_completed', '1', 0, '2025-05-23 10:21:20'),
+(2, 'Maratonista de Treinos', 'Completou 10 treinos.', 'fas fa-running', 25, 'workouts_completed_count', '10', 0, '2025-05-23 10:21:20'),
+(3, 'Mestre Culinário', 'Seguiu o plano alimentar por 7 dias consecutivos.', 'fas fa-utensils', 20, 'diet_streak_days', '7', 0, '2025-05-23 10:21:20'),
+(4, 'Presença Assídua', 'Fez check-in em 5 aulas de grupo.', 'fas fa-calendar-check', 15, 'class_checkins_count', '5', 0, '2025-05-23 10:21:20'),
+(5, 'Determinação de Aço', 'Manteve uma frequência de login por 30 dias.', 'fas fa-user-clock', 30, 'consecutive_logins', '30', 0, '2025-05-23 10:21:20'),
+(6, 'Leitor Atento', 'Confirmo que li e compreendi os Termos e Condições da plataforma.', 'fas fa-file-contract', 5, 'manual_task_trust_based', NULL, 1, '2025-05-23 11:11:20'),
+(7, 'Explorador Informado', 'Assisti ao vídeo tutorial de introdução à plataforma.', 'fas fa-play-circle', 5, 'manual_task_trust_based', NULL, 1, '2025-05-23 11:11:20'),
+(8, 'Planeador de Sucesso', 'Defini as minhas metas iniciais de fitness no meu perfil.', 'fas fa-bullseye', 10, 'initial_goals_set', NULL, 1, '2025-05-23 11:11:20'),
+(9, 'Perfil Completo', 'Preenchi todas as informações essenciais do meu perfil.', 'fas fa-user-check', 10, 'profile_info_completed', NULL, 1, '2025-05-23 11:11:20'),
+(10, 'Voz Ativa', 'Enviei o meu feedback sobre a plataforma através do formulário de sugestões.', 'fas fa-comments', 15, 'feedback_form_submitted', NULL, 1, '2025-05-23 11:11:20');
 
 -- --------------------------------------------------------
 
@@ -62,7 +127,12 @@ INSERT INTO `classes` (`id`, `name`, `description`, `trainer_id`, `schedule`, `d
 (18, 'cycling', 'sdaasfaesdgdgsfdbefbdf', 2, '2025-05-13 16:00:00', 32, 10),
 (19, 'cycling', 'asdadsadasda', 2, '2025-05-22 18:00:00', 25, 40),
 (20, 'Localizada', 'sdsadadasdasd', 6, '2025-05-22 17:00:00', 45, 12),
-(21, 'yoga', 'dsdasddadd', 6, '2025-05-26 19:00:00', 35, 20);
+(21, 'yoga', 'dsdasddadd', 6, '2025-05-26 19:00:00', 35, 20),
+(22, 'yoga', 'asdadasdda', 6, '2025-05-28 16:00:00', 35, 20),
+(23, 'cycling', 'dasddaddasd', 2, '2025-05-28 20:00:00', 45, 20),
+(24, 'Localizada', 'asdasffadasfad', 3, '2025-05-28 15:25:00', 35, 15),
+(25, 'yoga', 'saasdaadasda', 2, '2025-05-29 17:00:00', 40, 15),
+(26, 'cycling', 'dsadasdsafasdaf', 2, '2025-05-29 19:30:00', 25, 20);
 
 -- --------------------------------------------------------
 
@@ -90,7 +160,12 @@ INSERT INTO `class_participants` (`id`, `class_id`, `user_id`, `checked_in_at`, 
 (5, 8, 4, '2025-05-19 16:54:30', 26),
 (6, 8, 22, '2025-05-19 16:54:29', 26),
 (7, 17, 4, NULL, NULL),
-(9, 16, 4, NULL, NULL);
+(9, 16, 4, NULL, NULL),
+(10, 21, 4, '2025-05-26 11:31:12', 26),
+(11, 22, 4, '2025-05-26 11:31:21', 26),
+(12, 23, 4, '2025-05-26 11:31:23', 26),
+(13, 25, 4, '2025-05-26 11:31:29', 26),
+(14, 26, 4, '2025-05-26 11:50:02', 26);
 
 -- --------------------------------------------------------
 
@@ -155,6 +230,172 @@ INSERT INTO `clients` (`id`, `user_id`, `date_of_birth`, `weight`, `height`, `ac
 (5, 22, NULL, NULL, NULL, '', 'Encanador', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (6, 23, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (7, 24, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `client_achievements`
+--
+
+CREATE TABLE `client_achievements` (
+  `id` int(11) NOT NULL,
+  `client_id` int(11) NOT NULL,
+  `achievement_id` int(11) NOT NULL,
+  `earned_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `client_achievements`
+--
+
+INSERT INTO `client_achievements` (`id`, `client_id`, `achievement_id`, `earned_at`) VALUES
+(1, 2, 9, '2025-05-23 11:46:46'),
+(2, 2, 6, '2025-05-23 13:56:28'),
+(3, 2, 7, '2025-05-26 10:24:32');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `client_goals`
+--
+
+CREATE TABLE `client_goals` (
+  `id` int(11) NOT NULL,
+  `client_id` int(11) NOT NULL,
+  `goal_description` text NOT NULL,
+  `target_date` date DEFAULT NULL,
+  `status` enum('active','completed','cancelled') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `finished_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `client_goals`
+--
+
+INSERT INTO `client_goals` (`id`, `client_id`, `goal_description`, `target_date`, `status`, `created_at`, `updated_at`, `finished_at`) VALUES
+(1, 2, 'correr 10 minutos na esteira', '2025-05-30', 'cancelled', '2025-05-26 14:50:58', '2025-05-26 14:54:42', '2025-05-26 14:54:42'),
+(2, 2, 'correr 10 minutos na esteira', '2025-05-30', 'cancelled', '2025-05-26 14:54:42', '2025-05-26 15:55:38', '2025-05-26 15:55:38'),
+(3, 2, 'sassasaas', '2025-05-29', 'active', '2025-05-26 15:55:38', '2025-05-26 15:55:38', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `daily_tips`
+--
+
+CREATE TABLE `daily_tips` (
+  `id` int(11) NOT NULL,
+  `tip_text` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `daily_tips`
+--
+
+INSERT INTO `daily_tips` (`id`, `tip_text`, `created_at`) VALUES
+(1, 'Lembre-se de se hidratar bem e manter uma postura correta durante os exercícios!', '2025-05-22 14:38:36'),
+(2, 'Uma boa noite de sono é crucial para a recuperação muscular e bem-estar.', '2025-05-22 14:38:36'),
+(3, 'Não se esqueça de aquecer antes de cada treino e alongar depois.', '2025-05-22 14:38:36'),
+(4, 'Varie seus treinos para desafiar diferentes grupos musculares.', '2025-05-22 14:38:36'),
+(5, 'A consistência é mais importante que a intensidade no início. Crie o hábito!', '2025-05-22 14:38:36'),
+(6, 'Ouça o seu corpo. Descanse quando precisar.', '2025-05-22 14:38:36'),
+(7, 'Pequenas escolhas saudáveis ao longo do dia fazem uma grande diferença.', '2025-05-22 14:38:36'),
+(8, 'Defina metas realistas e celebre cada conquista no seu percurso.', '2025-05-22 14:38:36'),
+(9, 'Inclua frutas e vegetais coloridos na sua alimentação diária.', '2025-05-22 14:38:36'),
+(10, 'Lembre-se da importância da postura, tanto nos treinos como no dia a dia.', '2025-05-22 14:38:36'),
+(11, 'Experimente uma nova receita saudável esta semana.', '2025-05-22 14:38:36'),
+(12, 'Faça pausas ativas durante o trabalho ou estudo para se movimentar.', '2025-05-22 14:38:36'),
+(13, 'Encontre um parceiro de treino para manter a motivação.', '2025-05-22 14:38:36'),
+(14, 'Não compare o seu progresso com o dos outros. Cada jornada é única.', '2025-05-22 14:38:36'),
+(15, 'Planeie as suas refeições com antecedência para evitar escolhas menos saudáveis.', '2025-05-22 14:38:36'),
+(16, 'Beba um copo de água assim que acordar para começar o dia hidratado.', '2025-05-22 14:38:36'),
+(17, 'Substitua refrigerantes por água com limão ou chás sem açúcar.', '2025-05-22 14:38:36'),
+(18, 'Adicione mais fibras à sua dieta com grãos integrais, frutas e legumes.', '2025-05-22 14:38:36'),
+(19, 'Pratique a atenção plena (mindfulness) por alguns minutos todos os dias.', '2025-05-22 14:38:36'),
+(20, 'Mantenha um diário alimentar para ter mais consciência do que consome.', '2025-05-22 14:38:36'),
+(21, 'Desafie-se a experimentar um novo vegetal ou fruta a cada semana.', '2025-05-22 14:38:36'),
+(22, 'Prepare lanches saudáveis para ter à mão quando a fome apertar.', '2025-05-22 14:38:36'),
+(23, 'Aprenda a ler os rótulos dos alimentos para fazer escolhas mais informadas.', '2025-05-22 14:38:36'),
+(24, 'Caminhe ou use a bicicleta para trajetos curtos em vez do carro.', '2025-05-22 14:38:36'),
+(25, 'Encontre uma atividade física que realmente goste, assim será mais fácil manter-se ativo.', '2025-05-22 14:38:36'),
+(26, 'Celebre as pequenas vitórias, elas são importantes para manter o ânimo.', '2025-05-22 14:38:36'),
+(27, 'Não tenha medo de pedir ajuda a profissionais para atingir os seus objetivos.', '2025-05-22 14:38:36'),
+(28, 'Lembre-se que o descanso é tão importante quanto o treino.', '2025-05-22 14:38:36'),
+(29, 'Varie as fontes de proteína na sua alimentação (carne, peixe, ovos, leguminosas, tofu).', '2025-05-22 14:38:36'),
+(30, 'Evite alimentos processados e dê preferência a alimentos frescos e naturais.', '2025-05-22 14:38:36'),
+(31, 'Aquece bem antes de cada treino para evitar lesões.', '2025-05-22 15:48:01'),
+(32, 'Inclui exercícios compostos como agachamento e supino na tua rotina.', '2025-05-22 15:48:01'),
+(33, 'Mantém a forma correta em todos os exercícios, mesmo com menos peso.', '2025-05-22 15:48:01'),
+(34, 'Descansa entre séries, mas não mais do que o necessário.', '2025-05-22 15:48:01'),
+(35, 'Treina diferentes grupos musculares ao longo da semana.', '2025-05-22 15:48:01'),
+(36, 'Não ignores os dias de perna!', '2025-05-22 15:48:01'),
+(37, 'Aumenta gradualmente o peso para estimular o crescimento muscular.', '2025-05-22 15:48:01'),
+(38, 'Inclui cardio moderado para melhorar a saúde cardiovascular.', '2025-05-22 15:48:01'),
+(39, 'Hidrata-te antes, durante e depois do treino.', '2025-05-22 15:48:01'),
+(40, 'Come proteína após o treino para ajudar na recuperação muscular.', '2025-05-22 15:48:01'),
+(41, 'Usa um diário de treino para acompanhar a tua evolução.', '2025-05-22 15:48:01'),
+(42, 'Faz alongamentos após os treinos para melhorar a flexibilidade.', '2025-05-22 15:48:01'),
+(43, 'Ouvir música pode aumentar a tua motivação durante o treino.', '2025-05-22 15:48:01'),
+(44, 'Não treines o mesmo músculo dois dias seguidos.', '2025-05-22 15:48:01'),
+(45, 'Prioriza qualidade de movimento em vez de quantidade.', '2025-05-22 15:48:01'),
+(46, 'Utiliza o tempo sob tensão para maximizar os resultados.', '2025-05-22 15:48:01'),
+(47, 'Treina com um parceiro para manter a motivação alta.', '2025-05-22 15:48:01'),
+(48, 'Inclui treino de core para melhorar a estabilidade corporal.', '2025-05-22 15:48:01'),
+(49, 'Varie os exercícios para evitar platôs.', '2025-05-22 15:48:01'),
+(50, 'Inclui exercícios com o peso do corpo como flexões e pranchas.', '2025-05-22 15:48:01'),
+(51, 'Durma bem para otimizar os ganhos musculares.', '2025-05-22 15:48:01'),
+(52, 'Come hidratos de carbono complexos antes do treino.', '2025-05-22 15:48:01'),
+(53, 'A proteína whey pode ser útil no pós-treino.', '2025-05-22 15:48:01'),
+(54, 'Aprende a escutar o teu corpo e respeitar os limites.', '2025-05-22 15:48:01'),
+(55, 'Não ignores a dor – pode ser sinal de lesão.', '2025-05-22 15:48:01'),
+(56, 'Evita treinar em jejum se te sentes fraco.', '2025-05-22 15:48:01'),
+(57, 'Mantém uma alimentação equilibrada durante todo o dia.', '2025-05-22 15:48:01'),
+(58, 'Foca-te na progressão e não na perfeição.', '2025-05-22 15:48:01'),
+(59, 'Adiciona HIIT se queres queimar gordura de forma eficiente.', '2025-05-22 15:48:01'),
+(60, 'Inclui o treino de mobilidade na tua rotina semanal.', '2025-05-22 15:48:01'),
+(61, 'Não uses sempre as mesmas máquinas – varia os estímulos.', '2025-05-22 15:48:01'),
+(62, 'Treinar menos dias com mais intensidade pode ser eficaz.', '2025-05-22 15:48:01'),
+(63, 'Controla o movimento na descida (fase excêntrica) do exercício.', '2025-05-22 15:48:01'),
+(64, 'Faz um plano de treino e segue-o com disciplina.', '2025-05-22 15:48:01'),
+(65, 'Não te compares com os outros no ginásio – foca-te no teu progresso.', '2025-05-22 15:48:01'),
+(66, 'Treinar em jejum não é ideal para todos – experimenta e avalia.', '2025-05-22 15:48:01'),
+(67, 'Usa roupas confortáveis e adequadas ao tipo de treino.', '2025-05-22 15:48:01'),
+(68, 'Não te esqueças de respirar corretamente durante os exercícios.', '2025-05-22 15:48:01'),
+(69, 'Inclui treino de resistência para fortalecer tendões e ligamentos.', '2025-05-22 15:48:01'),
+(70, 'Se não estás a ver resultados, revê a tua dieta.', '2025-05-22 15:48:01'),
+(71, 'Faz um dia de descanso ativo em vez de parar completamente.', '2025-05-22 15:48:01'),
+(72, 'Começa com cargas leves se estás a voltar ao ginásio após pausa.', '2025-05-22 15:48:01'),
+(73, 'Faz exercícios unilaterais para corrigir desequilíbrios.', '2025-05-22 15:48:01'),
+(74, 'Pede ajuda a um instrutor se tiveres dúvidas sobre algum exercício.', '2025-05-22 15:48:01'),
+(75, 'Inclui superséries para treinos mais intensos e rápidos.', '2025-05-22 15:48:01'),
+(76, 'O agachamento é um dos melhores exercícios para o corpo todo.', '2025-05-22 15:48:01'),
+(77, 'Planeia os teus treinos com antecedência.', '2025-05-22 15:48:01'),
+(78, 'Treina a mente junto com o corpo – a disciplina é chave.', '2025-05-22 15:48:01'),
+(79, 'Mantém-te consistente – resultados levam tempo.', '2025-05-22 15:48:01'),
+(80, 'Celebra os pequenos progressos. Cada repetição conta!', '2025-05-22 15:48:01'),
+(81, 'Não treines só o que gostas – trabalha os músculos negligenciados.', '2025-05-22 15:49:37'),
+(82, 'A consistência é mais poderosa do que a motivação momentânea.', '2025-05-22 15:49:37'),
+(83, 'Inclui exercícios de tração como remadas para equilíbrio muscular.', '2025-05-22 15:49:37'),
+(84, 'Faz pausas estratégicas na tua rotina para evitar o overtraining.', '2025-05-22 15:49:37'),
+(85, 'Aprende a técnica de cada exercício antes de adicionar peso.', '2025-05-22 15:49:37'),
+(86, 'Treinar com elásticos pode ser tão eficaz quanto com pesos.', '2025-05-22 15:49:37'),
+(87, 'Uma boa execução vale mais do que muitas repetições mal feitas.', '2025-05-22 15:49:37'),
+(88, 'Trabalha a postura com exercícios como face pulls e pranchas.', '2025-05-22 15:49:37'),
+(89, 'Aumenta o desafio com tempo de descanso reduzido entre séries.', '2025-05-22 15:49:37'),
+(90, 'Treina com intenção – foca-te no músculo que estás a ativar.', '2025-05-22 15:49:37'),
+(91, 'Usa exercícios isométricos para fortalecer articulações e tendões.', '2025-05-22 15:49:37'),
+(92, 'Aumentar o número de repetições pode ser tão eficaz quanto aumentar peso.', '2025-05-22 15:49:37'),
+(93, 'Treina a pegada para melhorares o desempenho em puxadas e levantamento.', '2025-05-22 15:49:37'),
+(94, 'Acorda um pouco mais cedo e começa o dia com exercício leve.', '2025-05-22 15:49:37'),
+(95, 'Reavalia a tua rotina a cada 4-6 semanas para continuar a progredir.', '2025-05-22 15:49:37'),
+(96, 'Treinos em circuito são ótimos para trabalhar força e cardio ao mesmo tempo.', '2025-05-22 15:49:37'),
+(97, 'A mente cansada também afeta o rendimento físico – dorme bem.', '2025-05-22 15:49:37'),
+(98, 'Inclui exercícios de rotação externa para proteger os ombros.', '2025-05-22 15:49:37'),
+(99, 'Evita conversar demais durante o treino – mantém o foco.', '2025-05-22 15:49:37'),
+(100, 'Treina com progressão inteligente, não com pressa.', '2025-05-22 15:49:37');
 
 -- --------------------------------------------------------
 
@@ -535,6 +776,149 @@ INSERT INTO `messages` (`id`, `sender_id`, `receiver_id`, `message_type`, `messa
 -- --------------------------------------------------------
 
 --
+-- Estrutura da tabela `mood_logs`
+--
+
+CREATE TABLE `mood_logs` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `mood_value` tinyint(1) NOT NULL COMMENT '1:Péssimo, 2:Mau, 3:Neutro, 4:Bom, 5:Ótimo',
+  `assessment_date` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `mood_logs`
+--
+
+INSERT INTO `mood_logs` (`id`, `user_id`, `mood_value`, `assessment_date`, `created_at`) VALUES
+(1, 4, 5, '2025-05-22', '2025-05-22 16:23:49'),
+(8, 4, 2, '2025-05-23', '2025-05-23 09:24:44'),
+(22, 4, 5, '2025-05-26', '2025-05-26 14:38:56');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `motivational_quotes`
+--
+
+CREATE TABLE `motivational_quotes` (
+  `id` int(11) NOT NULL,
+  `quote_text` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `motivational_quotes`
+--
+
+INSERT INTO `motivational_quotes` (`id`, `quote_text`, `created_at`) VALUES
+(1, 'Cada treino é um passo mais perto do teu objetivo!', '2025-05-22 14:38:36'),
+(2, 'Não pares agora — o teu futuro eu vai agradecer!', '2025-05-22 14:38:36'),
+(3, 'Acredite em si mesmo e tudo será possível.', '2025-05-22 14:38:36'),
+(4, 'A persistência realiza o impossível.', '2025-05-22 14:38:36'),
+(5, 'Transforma o \"não consigo\" em \"ainda não consigo\".', '2025-05-22 14:38:36'),
+(6, 'O corpo alcança o que a mente acredita.', '2025-05-22 14:38:36'),
+(7, 'A disciplina é a ponte entre metas e realizações.', '2025-05-22 14:38:36'),
+(8, 'Pequenos progressos diários resultam em grandes conquistas.', '2025-05-22 14:38:36'),
+(9, 'A dor que sentes hoje será a força que sentirás amanhã.', '2025-05-22 14:38:36'),
+(10, 'Sê mais forte que a tua melhor desculpa.', '2025-05-22 14:38:36'),
+(11, 'O único treino mau é aquele que não aconteceu.', '2025-05-22 14:38:36'),
+(12, 'Acredite no processo. Os resultados virão.', '2025-05-22 14:38:36'),
+(13, 'Supere-se a cada dia. Você é o seu maior desafio.', '2025-05-22 14:38:36'),
+(14, 'A força não vem da capacidade física, mas de uma vontade indomável.', '2025-05-22 14:38:36'),
+(15, 'Não espere por oportunidades, crie-as.', '2025-05-22 14:38:36'),
+(16, 'O sucesso é a soma de pequenos esforços repetidos dia após dia.', '2025-05-22 14:38:36'),
+(17, 'Se pode sonhar, pode realizar.', '2025-05-22 14:38:36'),
+(18, 'A jornada de mil milhas começa com um único passo.', '2025-05-22 14:38:36'),
+(19, 'Acredite que você pode, e você já está no meio do caminho.', '2025-05-22 14:38:36'),
+(20, 'A melhor maneira de prever o futuro é criá-lo.', '2025-05-22 14:38:36'),
+(21, 'A sua saúde é o seu maior investimento.', '2025-05-22 14:38:36'),
+(22, 'Não se trata de ser o melhor. Trata-se de ser melhor do que eras ontem.', '2025-05-22 14:38:36'),
+(23, 'A diferença entre o ordinário e o extraordinário é aquele pequeno extra.', '2025-05-22 14:38:36'),
+(24, 'Seja a energia que você quer atrair.', '2025-05-22 14:38:36'),
+(25, 'Acredite nos seus sonhos e eles se tornarão realidade. Acredite em você e você os tornará realidade.', '2025-05-22 14:38:36'),
+(26, 'O caminho para o sucesso está sempre em construção.', '2025-05-22 14:38:36'),
+(27, 'A motivação é o que te faz começar. O hábito é o que te faz continuar.', '2025-05-22 14:38:36'),
+(28, 'Não conte os dias, faça os dias contarem.', '2025-05-22 14:38:36'),
+(29, 'A vida é como andar de bicicleta. Para manter o equilíbrio, é preciso continuar em movimento.', '2025-05-22 14:38:36'),
+(30, 'O seu corpo é o seu templo. Cuide bem dele.', '2025-05-22 14:38:36'),
+(31, 'A consistência supera o talento quando o talento não é consistente.', '2025-05-22 16:01:41'),
+(32, 'Não esperes pela motivação — age e ela virá contigo.', '2025-05-22 16:01:41'),
+(33, 'O suor de hoje é o sucesso de amanhã.', '2025-05-22 16:01:41'),
+(34, 'Treinar é difícil. Arrepender-se por não treinar é pior.', '2025-05-22 16:01:41'),
+(35, 'Vence o cansaço com a força do teu propósito.', '2025-05-22 16:01:41'),
+(36, 'Levanta-te. Treina. Supera-te.', '2025-05-22 16:01:41'),
+(37, 'Um corpo forte começa com uma mente determinada.', '2025-05-22 16:01:41'),
+(38, 'Cada repetição aproxima-te da tua melhor versão.', '2025-05-22 16:01:41'),
+(39, 'Quando estiveres cansado, lembra-te por que começaste.', '2025-05-22 16:01:41'),
+(40, 'Não desistas. O progresso está mais perto do que parece.', '2025-05-22 16:01:41'),
+(41, 'A dor é temporária. O orgulho é para sempre.', '2025-05-22 16:01:41'),
+(42, 'Transforma esforço em conquista.', '2025-05-22 16:01:41'),
+(43, 'Disciplina: fazer o que tem de ser feito, mesmo sem vontade.', '2025-05-22 16:01:41'),
+(44, 'Não há resultados sem esforço.', '2025-05-22 16:01:41'),
+(45, 'Quanto mais suar no treino, menos sangrarás na batalha.', '2025-05-22 16:01:41'),
+(46, 'O teu único limite és tu mesmo.', '2025-05-22 16:01:41'),
+(47, 'A mente comanda o corpo. Fortalece a tua mente.', '2025-05-22 16:01:41'),
+(48, 'Não há atalhos para um corpo forte e saudável.', '2025-05-22 16:01:41'),
+(49, 'Acredita. Treina. Alcança.', '2025-05-22 16:01:41'),
+(50, 'A motivação abre a porta. A disciplina mantém-te dentro.', '2025-05-22 16:01:41'),
+(51, 'Cada treino é um voto de confiança em ti mesmo.', '2025-05-22 16:01:41'),
+(52, 'Não é sobre ser o mais rápido, é sobre nunca parar.', '2025-05-22 16:01:41'),
+(53, 'Treina duro, repousa bem, volta mais forte.', '2025-05-22 16:01:41'),
+(54, 'Os resultados aparecem quando a dedicação se torna hábito.', '2025-05-22 16:01:41'),
+(55, 'A superação começa com uma decisão.', '2025-05-22 16:01:41'),
+(56, 'Desafia-te todos os dias a seres melhor do que ontem.', '2025-05-22 16:01:41'),
+(57, 'Não pares até te orgulhares.', '2025-05-22 16:01:41'),
+(58, 'Grandes mudanças exigem grandes esforços.', '2025-05-22 16:01:41'),
+(59, 'A força física vem do treino. A força interior vem da vontade.', '2025-05-22 16:01:41'),
+(60, 'Tu és mais forte do que pensas.', '2025-05-22 16:01:41'),
+(61, 'Foco, força e fé — o trio do sucesso.', '2025-05-22 16:01:41'),
+(62, 'Não deixes que o medo de falhar te impeça de tentar.', '2025-05-22 16:01:41'),
+(63, 'Só não alcança quem desiste.', '2025-05-22 16:01:41'),
+(64, 'Cada gota de suor é um passo para a vitória.', '2025-05-22 16:01:41'),
+(65, 'Mente positiva, treino produtivo.', '2025-05-22 16:01:41'),
+(66, 'Não é magia, é consistência.', '2025-05-22 16:01:41'),
+(67, 'A tua única competição é com quem eras ontem.', '2025-05-22 16:01:41'),
+(68, 'Treina o corpo, liberta a mente.', '2025-05-22 16:01:41'),
+(69, 'Não te rendas: o início é sempre o mais difícil.', '2025-05-22 16:01:41'),
+(70, 'Uma vida ativa é uma vida com mais energia e alegria.', '2025-05-22 16:01:41'),
+(71, 'Quem quer, encontra um caminho. Quem não quer, arranja desculpas.', '2025-05-22 16:01:41'),
+(72, 'Corpo saudável, mente em paz.', '2025-05-22 16:01:41'),
+(73, 'Vai com tudo ou volta para começar de novo.', '2025-05-22 16:01:41'),
+(74, 'Sacrifício hoje. Vitória amanhã.', '2025-05-22 16:01:41'),
+(75, 'Não deixes a preguiça vencer o teu sonho.', '2025-05-22 16:01:41'),
+(76, 'Cada treino conta, mesmo os difíceis.', '2025-05-22 16:01:41'),
+(77, 'A excelência nasce da repetição.', '2025-05-22 16:01:41'),
+(78, 'Treinar é investir em ti mesmo.', '2025-05-22 16:01:41'),
+(79, 'Torna-te a tua prioridade.', '2025-05-22 16:01:41'),
+(80, 'Constrói a tua confiança com ações diárias.', '2025-05-22 16:01:41'),
+(81, 'O sucesso é feito de dias comuns com escolhas extraordinárias.', '2025-05-22 16:01:41'),
+(82, 'Nunca subestimes o poder de um bom treino.', '2025-05-22 16:01:41'),
+(83, 'A tua transformação começa onde a tua zona de conforto termina.', '2025-05-22 16:01:41'),
+(84, 'Não pares até seres motivo de inspiração.', '2025-05-22 16:01:41'),
+(85, 'Acorda com determinação. Dorme com satisfação.', '2025-05-22 16:01:41'),
+(86, 'Desistir não é uma opção. Adapta-te.', '2025-05-22 16:01:41'),
+(87, 'Treina com garra. Vive com orgulho.', '2025-05-22 16:01:41'),
+(88, 'Cada esforço hoje é uma vitória futura.', '2025-05-22 16:01:41'),
+(89, 'Transforma dor em poder.', '2025-05-22 16:01:41'),
+(90, 'Move-te com propósito, não só com pressa.', '2025-05-22 16:01:41'),
+(91, 'O esforço de hoje é o físico de amanhã.', '2025-05-22 16:01:41'),
+(92, 'Quem treina com foco, conquista com mérito.', '2025-05-22 16:01:41'),
+(93, 'Só melhora quem insiste.', '2025-05-22 16:01:41'),
+(94, 'Faz do treino o teu hábito, não a tua exceção.', '2025-05-22 16:01:41'),
+(95, 'Coragem é continuar mesmo quando tudo diz para parar.', '2025-05-22 16:01:41'),
+(96, 'A tua meta só depende de ti.', '2025-05-22 16:01:41'),
+(97, 'Persistência transforma objetivos em realidade.', '2025-05-22 16:01:41'),
+(98, 'Hoje difícil, amanhã incrível.', '2025-05-22 16:01:41'),
+(99, 'Treina em silêncio, brilha em público.', '2025-05-22 16:01:41'),
+(100, 'Um dia sem treino é um dia sem progresso.', '2025-05-22 16:01:41'),
+(101, 'Sem desculpas. Só resultados.', '2025-05-22 16:01:41'),
+(102, 'Mantém-te firme. Os resultados chegam para quem espera... a treinar.', '2025-05-22 16:01:41');
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura da tabela `recipes`
 --
 
@@ -585,6 +969,28 @@ INSERT INTO `recommendations` (`id`, `title`, `description`, `carbohydrates`, `c
 -- --------------------------------------------------------
 
 --
+-- Estrutura da tabela `shown_content_log`
+--
+
+CREATE TABLE `shown_content_log` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `content_type` enum('tip','quote') NOT NULL,
+  `content_id` int(11) NOT NULL,
+  `shown_date` date NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Extraindo dados da tabela `shown_content_log`
+--
+
+INSERT INTO `shown_content_log` (`id`, `user_id`, `content_type`, `content_id`, `shown_date`) VALUES
+(1, 4, 'tip', 77, '2025-05-23'),
+(2, 4, 'quote', 89, '2025-05-23');
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura da tabela `users`
 --
 
@@ -611,7 +1017,7 @@ INSERT INTO `users` (`id`, `name`, `email`, `numero_telemovel`, `password`, `rol
 (1, 'João Silva', 'joao@gmail.com', NULL, '$2y$10$lh.W5KbiZP/pR26lenTsaO/B5fR542orbtAlxfaWk/y16UgrPsIp2', 'client', NULL, NULL, NULL, 0, '2025-02-16 16:00:40', NULL),
 (2, 'Maria Souza', 'maria@gmail.com', '91829181', '$2y$10$463JYEX113pg5x1.aUaMd.1nIjnnHxZJ/ziE5o18bXJ3Do2HmTeyy', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 16:00:40', 'user_2_1746632583.png'),
 (3, 'Carlos Oliveira', 'carlos@gmail.com', NULL, '$2y$10$ky3zxCNaI2/olPuWNG8icu7ihDtYj94JaBFMJFphOMc6vIWwtJNm.', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 16:00:40', NULL),
-(4, 'Nelo Rodrigues da silva chapeiro', 'Nelo@gmail.com', '917688818', '$2y$10$Ya4lZjtt5aMJi1nZm9VW4O9quz16SDR5okERVFHVfSLOgbIisYAwC', 'client', NULL, NULL, NULL, 0, '2025-02-16 16:42:55', 'user_4_1744899053.png'),
+(4, 'Nelo Rodrigues da silva chapeiro', 'Nelo@gmail.com', '917688818', '$2y$10$Ya4lZjtt5aMJi1nZm9VW4O9quz16SDR5okERVFHVfSLOgbIisYAwC', 'client', NULL, NULL, NULL, 0, '2025-02-16 16:42:55', 'user_4_1748255934.png'),
 (6, 'Claudia', 'claudia@gmail.com', '913677215', '$2y$10$QrMlKOAR98ERl97o/rMoIenm5r7q0dGmnRa1WzQir5kHS.h6e0Mn2', 'trainer', NULL, NULL, NULL, 0, '2025-02-16 17:27:51', 'user_6_1744907164.png'),
 (7, 'Silvia', 'silvia@gmail.com', '914123555', '$2y$10$sp7sMfxCBTptdgIKjLf0iead9WZQQvzYiW9GiiqhpuNI/qeHehSY6', 'nutritionist', NULL, NULL, NULL, 0, '2025-02-16 17:27:51', 'user_7_1744907663.png'),
 (8, 'claudio', 'claudio@gmail.com', NULL, 'claudio123', '', NULL, NULL, NULL, 1, '2025-02-16 17:57:51', NULL),
@@ -624,7 +1030,7 @@ INSERT INTO `users` (`id`, `name`, `email`, `numero_telemovel`, `password`, `rol
 (23, 'Leonardo', 'leofsgomes.2007@gmail.com', NULL, '$2y$10$/UlDkdcXgPXOmtFHqE5e2OzsVyY5wk2np9Yvtw1Yyzj37f475jN5u', 'client', 'af6410bd5e87419eddb0bb9f789cbb9ad5cf69ce0d7f2dbf66d6650d83b52a48ec6361fa8870d069dd72f970a75aba99a537', NULL, NULL, 1, '2025-03-20 14:39:26', NULL),
 (24, 'Hugo', 'hugotestes621@gmail.com', NULL, '$2y$10$A6Hth3D57BCox6Tiq1HA2u4xYYxiQi1m2xJi2AeUktqkQrd6ZhUI6', 'client', 'f1e949afc12cfd721ac34496600c93306a8fa54dff3702d8c27e8bce335c0d88458fd2ab4aa6d70118d4de9fb52ae5aed942', NULL, NULL, 1, '2025-05-02 14:11:43', NULL),
 (25, 'diogo', 'diogomicaelpinto6@gmail.com', NULL, '$2y$10$RsLAJ8V.idtdP2rrErNwPOIKWanIqyISoG4jhlcL9nOdBi2vYnsY.', 'receptionist', '157b221a72236923e7b47a11960aeb04546c8b2c21e2799cc494706978e04db2c6039aeece6f640e1b3cef9673c88fd476e4', NULL, NULL, 1, '2025-05-19 12:01:31', NULL),
-(26, 'Orlando Rodrigues', 'papmywellness@gmail.com', NULL, '$2y$10$u/7WBmhrwRA01alOGXuineWdSHGIHpOHxwl7UdnoFGqPcut5x4yre', 'receptionist', NULL, NULL, NULL, 0, '2025-05-19 12:13:21', NULL);
+(26, 'Orlando Rodrigues', 'papmywellness@gmail.com', NULL, '$2y$10$u/7WBmhrwRA01alOGXuineWdSHGIHpOHxwl7UdnoFGqPcut5x4yre', 'receptionist', NULL, NULL, NULL, 0, '2025-05-19 12:13:21', 'user_26_1747845622.png');
 
 -- --------------------------------------------------------
 
@@ -857,6 +1263,21 @@ INSERT INTO `workout_plan_exercises` (`id`, `workout_plan_id`, `exercise_id`) VA
 --
 
 --
+-- Índices para tabela `access_delegations`
+--
+ALTER TABLE `access_delegations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `granting_admin_id` (`granting_admin_id`),
+  ADD KEY `delegated_user_id` (`delegated_user_id`);
+
+--
+-- Índices para tabela `achievements`
+--
+ALTER TABLE `achievements`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`);
+
+--
 -- Índices para tabela `classes`
 --
 ALTER TABLE `classes`
@@ -878,6 +1299,27 @@ ALTER TABLE `class_participants`
 ALTER TABLE `clients`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`);
+
+--
+-- Índices para tabela `client_achievements`
+--
+ALTER TABLE `client_achievements`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `client_achievement` (`client_id`,`achievement_id`),
+  ADD KEY `achievement_id_idx` (`achievement_id`);
+
+--
+-- Índices para tabela `client_goals`
+--
+ALTER TABLE `client_goals`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `client_id_idx` (`client_id`);
+
+--
+-- Índices para tabela `daily_tips`
+--
+ALTER TABLE `daily_tips`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Índices para tabela `day_options`
@@ -954,6 +1396,19 @@ ALTER TABLE `messages`
   ADD KEY `idx_message_conversation` (`sender_id`,`receiver_id`);
 
 --
+-- Índices para tabela `mood_logs`
+--
+ALTER TABLE `mood_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_date_mood` (`user_id`,`assessment_date`);
+
+--
+-- Índices para tabela `motivational_quotes`
+--
+ALTER TABLE `motivational_quotes`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Índices para tabela `recipes`
 --
 ALTER TABLE `recipes`
@@ -965,6 +1420,17 @@ ALTER TABLE `recipes`
 --
 ALTER TABLE `recommendations`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Índices para tabela `shown_content_log`
+--
+ALTER TABLE `shown_content_log`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_content_date` (`user_id`,`content_type`,`shown_date`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `content_type` (`content_type`),
+  ADD KEY `content_id` (`content_id`),
+  ADD KEY `shown_date` (`shown_date`);
 
 --
 -- Índices para tabela `users`
@@ -1018,22 +1484,52 @@ ALTER TABLE `workout_plan_exercises`
 --
 
 --
+-- AUTO_INCREMENT de tabela `access_delegations`
+--
+ALTER TABLE `access_delegations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT de tabela `achievements`
+--
+ALTER TABLE `achievements`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
 -- AUTO_INCREMENT de tabela `classes`
 --
 ALTER TABLE `classes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT de tabela `class_participants`
 --
 ALTER TABLE `class_participants`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT de tabela `clients`
 --
 ALTER TABLE `clients`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT de tabela `client_achievements`
+--
+ALTER TABLE `client_achievements`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de tabela `client_goals`
+--
+ALTER TABLE `client_goals`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de tabela `daily_tips`
+--
+ALTER TABLE `daily_tips`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT de tabela `day_options`
@@ -1096,6 +1592,18 @@ ALTER TABLE `messages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
+-- AUTO_INCREMENT de tabela `mood_logs`
+--
+ALTER TABLE `mood_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
+-- AUTO_INCREMENT de tabela `motivational_quotes`
+--
+ALTER TABLE `motivational_quotes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
+
+--
 -- AUTO_INCREMENT de tabela `recipes`
 --
 ALTER TABLE `recipes`
@@ -1106,6 +1614,12 @@ ALTER TABLE `recipes`
 --
 ALTER TABLE `recommendations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT de tabela `shown_content_log`
+--
+ALTER TABLE `shown_content_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de tabela `users`
@@ -1148,6 +1662,13 @@ ALTER TABLE `workout_plan_exercises`
 --
 
 --
+-- Limitadores para a tabela `access_delegations`
+--
+ALTER TABLE `access_delegations`
+  ADD CONSTRAINT `access_delegations_ibfk_1` FOREIGN KEY (`granting_admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `access_delegations_ibfk_2` FOREIGN KEY (`delegated_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
 -- Limitadores para a tabela `classes`
 --
 ALTER TABLE `classes`
@@ -1168,6 +1689,19 @@ ALTER TABLE `class_participants`
 --
 ALTER TABLE `clients`
   ADD CONSTRAINT `clients_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Limitadores para a tabela `client_achievements`
+--
+ALTER TABLE `client_achievements`
+  ADD CONSTRAINT `fk_client_achievements_achievement` FOREIGN KEY (`achievement_id`) REFERENCES `achievements` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_client_achievements_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Limitadores para a tabela `client_goals`
+--
+ALTER TABLE `client_goals`
+  ADD CONSTRAINT `fk_client_goals_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Limitadores para a tabela `diet_plans`
@@ -1209,6 +1743,12 @@ ALTER TABLE `history_assessments`
 ALTER TABLE `messages`
   ADD CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Limitadores para a tabela `mood_logs`
+--
+ALTER TABLE `mood_logs`
+  ADD CONSTRAINT `mood_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Limitadores para a tabela `recipes`

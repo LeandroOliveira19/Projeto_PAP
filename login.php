@@ -139,12 +139,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Health & Wellness</title>
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="assets/css/styles.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUFVL" crossorigin="anonymous">
+    <!-- Google Fonts (Poppins - já usado no header, bom para consistência) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Estilos para o corpo da página */
+        body {
+            font-family: 'Poppins', sans-serif; /* Usa a fonte Poppins */
+            background: url('assets/img/login_background.jpg') no-repeat center center fixed; /* Imagem de fundo */
+            background-size: cover; /* Cobre toda a área */
+            display: flex; /* Usa flexbox para centralizar */
+            justify-content: center; /* Centraliza horizontalmente */
+            align-items: center; /* Centraliza verticalmente */
+            min-height: 100vh; /* Altura mínima de 100% da viewport */
+            margin: 0; /* Remove margem padrão */
+            position: relative; /* Necessário para o overlay */
+            color: #333; /* Cor de texto padrão */
+        }
+
+        /* Overlay para escurecer a imagem de fundo e melhorar a legibilidade */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6); /* Overlay preto semi-transparente */
+            z-index: 1; /* Garante que o overlay fica por cima da imagem */
+        }
+
+        /* Container principal do formulário */
+        .login-container {
+            position: relative; /* Para ficar acima do overlay */
+            z-index: 2; /* Garante que o conteúdo fica por cima do overlay */
+            background-color: rgba(255, 255, 255, 0.95); /* Fundo branco semi-transparente para o formulário */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); /* Sombra suave */
+            width: 100%;
+            max-width: 400px; /* Largura máxima do formulário */
+        }
+
+        /* Título */
+        .login-container h2 {
+            margin-bottom: 25px;
+            color: #007bff; /* Cor primária do Bootstrap */
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
+    <div class="login-container">
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <h2 class="text-center">Login</h2>
@@ -163,15 +212,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <button type="submit" class="btn btn-primary w-100">Entrar</button>
                 </form>
                 <div class="text-center mt-3">
-                    <p>Não tem uma conta? <a href="register.php">Registre-se aqui</a>.</p>
                     <p>Esqueceu a password? <a href="forgot_password.php">Recuperar password</a>.</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS e dependências -->
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <!-- Bootstrap Bundle JS (inclui Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigSz/r+8KxI7VNBgh+z" crossorigin="anonymous"></script>
 </body>
 </html>

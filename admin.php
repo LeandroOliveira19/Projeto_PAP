@@ -1,13 +1,33 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Inclui db.php primeiro para que $pdo esteja disponível
+include 'db.php';
+include 'includes/auth_utils.php'; // Inclui a função de verificação
+
+// Verifica se o usuário está logado
+if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
-include 'db.php';
+
+// Verifica se o usuário tem a permissão específica 'view_admin_dashboard'
+if (!user_has_specific_permission($pdo, $_SESSION['user_id'], 'view_admin_dashboard')) {
+    $_SESSION['error_message'] = "Acesso negado. Permissão para 'Aceder Painel Admin' necessária.";
+    // Redirecionar para uma página de "acesso negado" ou para o dashboard do usuário
+    if (isset($_SESSION['role']) && $_SESSION['role'] === 'receptionist') {
+        header('Location: receptionist.php');
+    } else {
+        header('Location: login.php'); // Fallback
+    }
+    exit;
+}
+
 include 'header.php'; // Inclui o header (que tem o início do body)
 include 'send_email.php';
-include 'sidebar_admin.php'; // Inclui a nova sidebar
+
+// Decide qual sidebar incluir
+$sidebar_to_include = ($_SESSION['role'] === 'admin') ? 'sidebar_admin.php' : 'sidebar_receptionist.php';
+include $sidebar_to_include;
 
 $active_page = basename($_SERVER['PHP_SELF']); // admin.php
 

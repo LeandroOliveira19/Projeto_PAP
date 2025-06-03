@@ -2,7 +2,9 @@
 // File: sidebar_client.php
 // Sidebar específica para utilizadores com role 'client'.
 // IMPORTANTE: A variável $active_page deve ser definida na página PAI ANTES de incluir este ficheiro.
-if (!isset($active_page)) { $active_page = ''; } // Garante que $active_page existe
+if (!isset($active_page)) {
+    $active_page = '';
+} // Garante que $active_page existe
 ?>
 <aside class="sidebar">
     <div class="sidebar-header">
@@ -10,11 +12,11 @@ if (!isset($active_page)) { $active_page = ''; } // Garante que $active_page exi
     </div>
     <nav>
         <ul class="sidebar-nav">
-             <li><a href="dashboard.php" class="<?= ($active_page == 'dashboard.php') ? 'active' : ''; ?>"><i class="fas fa-tachometer-alt fa-fw"></i><span>Dashboard</span></a></li>
+            <li><a href="dashboard.php" class="<?= ($active_page == 'dashboard.php') ? 'active' : ''; ?>"><i class="fas fa-tachometer-alt fa-fw"></i><span>Dashboard</span></a></li>
             <!-- Item de Plano de Treino com Sub-menu ATUALIZADO -->
             <?php
-                $workout_submenu_pages = ['workout_hub.php', 'workout_plan_history.php', 'workout_plan_details.php'];
-                $is_workout_submenu_active = in_array($active_page, $workout_submenu_pages);
+            $workout_submenu_pages = ['workout_hub.php', 'workout_plan_history.php', 'workout_plan_details.php'];
+            $is_workout_submenu_active = in_array($active_page, $workout_submenu_pages);
             ?>
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link has-arrow <?= $is_workout_submenu_active ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#workoutSubmenu" aria-expanded="<?= $is_workout_submenu_active ? 'true' : 'false'; ?>" aria-controls="workoutSubmenu">
@@ -43,9 +45,9 @@ if (!isset($active_page)) { $active_page = ''; } // Garante que $active_page exi
 
             <!-- Item de Nutrição com Sub-menu ATUALIZADO -->
             <?php
-                // Define quais páginas pertencem ao submenu de Nutrição
-                $nutrition_submenu_pages = ['nutrition_hub.php', 'recommendations_client.php', 'recipes_client.php'];
-                $is_nutrition_submenu_active = in_array($active_page, $nutrition_submenu_pages);
+            // Define quais páginas pertencem ao submenu de Nutrição
+            $nutrition_submenu_pages = ['nutrition_hub.php', 'recommendations_client.php', 'recipes_client.php'];
+            $is_nutrition_submenu_active = in_array($active_page, $nutrition_submenu_pages);
             ?>
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link has-arrow <?= $is_nutrition_submenu_active ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#nutritionSubmenu" aria-expanded="<?= $is_nutrition_submenu_active ? 'true' : 'false'; ?>" aria-controls="nutritionSubmenu">
@@ -65,13 +67,38 @@ if (!isset($active_page)) { $active_page = ''; } // Garante que $active_page exi
                 </ul>
             </li>
             <!-- Fim Item de Nutrição com Sub-menu -->
-            <li><a href="classes.php" class="<?= ($active_page == 'classes.php') ? 'active' : ''; ?>"><i class="fas fa-calendar-check fa-fw"></i><span>Aulas</span></a></li>
+            <!-- Item de Conquistas com Sub-menu -->
+            <?php
+            $achievements_submenu_pages = ['all_achievements.php', 'claim_achievements.php'];
+            $is_achievements_submenu_active = in_array($active_page, $achievements_submenu_pages);
+            ?>
+            <li class="sidebar-item">
+                <a href="#" class="sidebar-link has-arrow <?= $is_achievements_submenu_active ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#achievementsSubmenu" aria-expanded="<?= $is_achievements_submenu_active ? 'true' : 'false'; ?>" aria-controls="achievementsSubmenu">
+                    <i class="fas fa-trophy fa-fw"></i> <!-- Ícone principal para Conquistas -->
+                    <span>Conquistas</span>
+                </a>
+                <ul id="achievementsSubmenu" class="sidebar-dropdown list-unstyled collapse <?= $is_achievements_submenu_active ? 'show' : ''; ?>" data-bs-parent=".sidebar-nav">
+                    <li class="sidebar-item">
+                        <a href="all_achievements.php" class="sidebar-link <?= ($active_page == 'all_achievements.php') ? 'active' : ''; ?>"><i class="fas fa-medal fa-fw ms-3"></i> <span>Minhas Conquistas</span></a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a href="claim_achievements.php" class="sidebar-link <?= ($active_page == 'claim_achievements.php') ? 'active' : ''; ?>"><i class="fas fa-hand-sparkles fa-fw ms-3"></i> <span>Reivindicar</span></a>
+                    </li>
+                </ul>
+            </li>
+            <!-- Item de Aulas -->
+            <li>
+                <a href="classes.php" class="<?= ($active_page == 'classes.php') ? 'active' : ''; ?>">
+                    <i class="fas fa-calendar-alt fa-fw"></i>
+                    <span>Aulas</span>
+                </a>
+            </li>
 
             <!-- Item de Perfil com Sub-menu ATUALIZADO -->
             <?php
-                // Lista de páginas que pertencem ao submenu Perfil
-                $profile_submenu_pages = ['profile.php', 'client_statistics.php', 'ficha_pessoal.php', 'evolution.php']; // <<< ADICIONADO evolution.php
-                $is_profile_submenu_active = in_array($active_page, $profile_submenu_pages);
+            // Lista de páginas que pertencem ao submenu Perfil
+            $profile_submenu_pages = ['profile.php', 'client_statistics.php', 'ficha_pessoal.php', 'evolution.php']; // <<< ADICIONADO evolution.php
+            $is_profile_submenu_active = in_array($active_page, $profile_submenu_pages);
             ?>
             <li class="sidebar-item">
                 <a href="#" class="sidebar-link has-arrow <?= $is_profile_submenu_active ? 'active' : ''; ?>" data-bs-toggle="collapse" data-bs-target="#profileSubmenu" aria-expanded="<?= $is_profile_submenu_active ? 'true' : 'false'; ?>" aria-controls="profileSubmenu">
@@ -112,8 +139,8 @@ if (!isset($active_page)) { $active_page = ''; } // Garante que $active_page exi
             <li><a href="chat.php" class="<?= ($active_page == 'chat.php') ? 'active' : ''; ?>"><i class="fas fa-comments fa-fw"></i><span>Chat</span></a></li>
         </ul>
     </nav>
-     <div class="sidebar-footer">
-         <a href="logout.php">
+    <div class="sidebar-footer">
+        <a href="logout.php">
             <i class="fas fa-sign-out-alt fa-fw"></i>
             <span>Sair</span>
         </a>

@@ -118,6 +118,75 @@ try {
         }
 
         if ($stmt->rowCount() > 0) {
+            // --- Lógica de Atribuição de Conquistas (APÓS CHECK-IN BEM-SUCEDIDO) ---
+            if ($action === 'check_in') {
+                try {
+                    // 1. Obter o client_id para o client_user_id que fez check-in
+                    $stmt_get_client_id = $pdo->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+                    $stmt_get_client_id->execute([$client_user_id]);
+                    $client_id = $stmt_get_client_id->fetchColumn();
+
+                    if ($client_id) {
+                        // Contar o total de check-ins concluídos por este cliente
+                        $stmt_count_checkins = $pdo->prepare("
+                            SELECT COUNT(cp.id)
+                            FROM class_participants cp
+                            WHERE cp.user_id = ? AND cp.checked_in_at IS NOT NULL
+                        ");
+                        $stmt_count_checkins->execute([$client_user_id]);
+                        $total_checkins_count = (int)$stmt_count_checkins->fetchColumn();
+
+                        // --- Conquista: "Primeiro Check-in" ---
+                        if ($total_checkins_count === 1) {
+                            $stmt_get_ach_first = $pdo->prepare("SELECT id FROM achievements WHERE criteria_type = 'first_class_checkin' AND is_manual_claim = 0 LIMIT 1");
+                            $stmt_get_ach_first->execute();
+                            $achievement_first_id = $stmt_get_ach_first->fetchColumn();
+
+                            if ($achievement_first_id) {
+                                $stmt_check_earned = $pdo->prepare("SELECT id FROM client_achievements WHERE client_id = ? AND achievement_id = ?");
+                                $stmt_check_earned->execute([$client_id, $achievement_first_id]);
+                                if (!$stmt_check_earned->fetch()) {
+                                    $stmt_award = $pdo->prepare("INSERT INTO client_achievements (client_id, achievement_id, earned_at) VALUES (?, ?, NOW())");
+                                    $stmt_award->execute([$client_id, $achievement_first_id]);
+                                    error_log("Conquista 'first_class_checkin' atribuída ao cliente_id: " . $client_id);
+                                }
+                            }
+                        }
+
+                        // --- Conquista: "Assíduo nas Aulas" (Ex: 5, 10, 20 Check-ins) ---
+                        $stmt_get_ach_counts = $pdo->prepare("
+                            SELECT id, criteria_value 
+                            FROM achievements 
+                            WHERE criteria_type = 'classes_checked_in_count' 
+                              AND is_manual_claim = 0 
+                            ORDER BY criteria_value ASC
+                        ");
+                        $stmt_get_ach_counts->execute();
+                        $ach_count_all_data = $stmt_get_ach_counts->fetchAll(PDO::FETCH_ASSOC);
+
+                        if ($ach_count_all_data) {
+                            foreach ($ach_count_all_data as $ach_count_data_item) {
+                                $achievement_count_id = $ach_count_data_item['id'];
+                                $required_count = (int)$ach_count_data_item['criteria_value'];
+
+                                // Verificar se o cliente já ganhou ESTA conquista específica
+                                $stmt_check_earned_specific = $pdo->prepare("SELECT id FROM client_achievements WHERE client_id = ? AND achievement_id = ?");
+                                $stmt_check_earned_specific->execute([$client_id, $achievement_count_id]);
+                                
+                                if (!$stmt_check_earned_specific->fetch()) { // Se ainda não ganhou ESTA conquista
+                                    if ($total_checkins_count >= $required_count) {
+                                        $stmt_award = $pdo->prepare("INSERT INTO client_achievements (client_id, achievement_id, earned_at) VALUES (?, ?, NOW())");
+                                        $stmt_award->execute([$client_id, $achievement_count_id]);
+                                        error_log("Conquista 'classes_checked_in_count' (ID: $achievement_count_id, Req: $required_count) atribuída ao cliente_id: " . $client_id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (PDOException $e) { error_log("Erro BD ao verificar/atribuir conquistas de check-in: " . $e->getMessage()); }
+            }
+            // --- FIM Lógica de Atribuição de Conquistas ---
+
             // Obter nova contagem de check-ins para a aula
             $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM class_participants WHERE class_id = :class_id AND checked_in_at IS NOT NULL");
             $stmt_count->execute(['class_id' => $class_id]);

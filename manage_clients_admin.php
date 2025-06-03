@@ -1,10 +1,35 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Inclui db.php primeiro para que $pdo esteja disponível
+include 'db.php';
+include 'includes/auth_utils.php'; // Inclui a função de verificação
+
+// Verifica se o usuário está logado
+if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
-include 'db.php';
+
+// Verifica se o usuário tem a permissão específica 'manage_clients'
+if (!user_has_specific_permission($pdo, $_SESSION['user_id'], 'manage_clients')) {
+    $_SESSION['error_message'] = "Acesso negado. Permissão para 'Gerir Clientes' necessária.";
+    // Redirecionar para uma página de "acesso negado" ou para o dashboard do usuário
+    if (isset($_SESSION['role'])) {
+        switch ($_SESSION['role']) {
+            case 'receptionist':
+                header('Location: receptionist.php');
+                break;
+            // Adicione outros casos se necessário
+            default:
+                header('Location: login.php'); // Fallback
+                break;
+        }
+    } else {
+        header('Location: login.php'); // Fallback se role não estiver na sessão
+    }
+    exit;
+}
+
 include 'header.php';
 include 'send_email.php';
 

@@ -3,6 +3,9 @@
 // Se não for o caso, descomente a linha abaixo:
 // session_start();
 
+// Define o fuso horário padrão para Portugal
+date_default_timezone_set('Europe/Lisbon');
+
 // --- INÍCIO: CÓDIGO DO ÍCONE DE PERFIL (ADICIONADO) ---
 $profile_pic_path = 'assets/img/profile_pics/'; // Define o caminho base das fotos
 $profile_pic_file = null;
@@ -26,6 +29,28 @@ if (isset($_SESSION['user_id'])) {
     }
 }
 // --- FIM: CÓDIGO DO ÍCONE DE PERFIL ---
+
+// --- INÍCIO: Lógica para Notificação de Acesso Delegado ---
+$info_delegacao_ativa_para_header = null;
+if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role'] !== 'admin') { // Só verifica para não-admins
+    // É importante que 'db.php' já tenha sido incluído e $pdo esteja disponível.
+    // E que 'includes/auth_utils.php' (ou onde a função estiver) já tenha sido incluído.
+    if (file_exists(__DIR__ . '/includes/auth_utils.php')) { // Verifica se o arquivo existe
+        include_once __DIR__ . '/includes/auth_utils.php'; // Usa include_once e __DIR__
+        if (function_exists('obter_info_delegacao_ativa')) { // Verifica se a função existe
+             if (isset($pdo)) { // Verifica se $pdo está definido
+                $info_delegacao_ativa_para_header = obter_info_delegacao_ativa($pdo, $_SESSION['user_id']);
+             } else {
+                error_log("Variável \$pdo não definida ao tentar chamar obter_info_delegacao_ativa em header.php");
+             }
+        } else {
+            error_log("Função obter_info_delegacao_ativa não encontrada em header.php (após incluir auth_utils.php).");
+        }
+    } else {
+        error_log("Arquivo includes/auth_utils.php não encontrado em header.php.");
+    }
+}
+// --- FIM: Lógica para Notificação de Acesso Delegado ---
 
 ?>
 <!DOCTYPE html>
@@ -132,14 +157,14 @@ if (isset($_SESSION['user_id'])) {
             }
 
             // Aplica cores do chat guardadas no localStorage
-             const savedColors = JSON.parse(localStorage.getItem('chatColors') || '{}');
+             const savedColors = JSON.parse(localStorage.getItem('chatColors_whatsapp') || '{}'); // CHAVE ATUALIZADA
              const root = document.documentElement; // Seleciona o elemento raiz (<html>)
 
              // Define as propriedades CSS customizadas (variáveis) se existirem no localStorage
-             if(savedColors.sentBg) root.style.setProperty('--chat-sent-bg', savedColors.sentBg);
-             if(savedColors.sentText) root.style.setProperty('--chat-sent-text', savedColors.sentText);
-             if(savedColors.receivedBg) root.style.setProperty('--chat-received-bg', savedColors.receivedBg);
-             if(savedColors.receivedText) root.style.setProperty('--chat-received-text', savedColors.receivedText);
+             if(savedColors.sentBg) root.style.setProperty('--chat-sent-bg-whatsapp', savedColors.sentBg);
+             if(savedColors.sentText) root.style.setProperty('--chat-sent-text-whatsapp', savedColors.sentText);
+             if(savedColors.receivedBg) root.style.setProperty('--chat-received-bg-whatsapp', savedColors.receivedBg);
+             if(savedColors.receivedText) root.style.setProperty('--chat-received-text-whatsapp', savedColors.receivedText);
         })();
     </script>
     <!-- ================================================== -->
@@ -161,6 +186,57 @@ if (isset($_SESSION['user_id'])) {
     <!-- *** FIM: HTML DO ÍCONE DE PERFIL *** -->
 
 
+
     <!-- O conteúdo principal da página (incluindo sidebar e main-content)
          será inserido aqui pelos arquivos que incluem este header
          (ex: dashboard.php, trainer.php, chat.php, etc.) -->
+
+
+<?php if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role'] !== 'admin'): ?>
+    <?php if (isset($info_delegacao_ativa_para_header) && $info_delegacao_ativa_para_header): ?>
+    <style>
+        /* Estilos para o pop-up de notificação */
+        .delegation-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f8d7da; /* Cor de fundo suavemente vermelha */
+            color: #721c24; /* Texto vermelho escuro */
+            border: 1px solid #f5c6cb;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1050; /* Garante que fica acima de outros elementos */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: none; /* Esconde inicialmente */
+        }
+        .delegation-notification .close-button {
+            float: right;
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #721c24;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+        .delegation-notification .close-button:hover {
+            color: #000;
+        }
+    </style>
+    <div id="delegationNotification" class="delegation-notification">
+        <span class="close-button" onclick="closeDelegationNotification()">&times;</span>
+        <i class="fas fa-user-shield me-2"></i>Acesso administrativo delegado por <strong><?= htmlspecialchars($info_delegacao_ativa_para_header['admin_concedente_name']) ?></strong>. Expira em: <?= htmlspecialchars(date('d/m/Y H:i', strtotime($info_delegacao_ativa_para_header['expires_at']))) ?>.
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!localStorage.getItem('delegationNotificationClosed')) {
+                document.getElementById('delegationNotification').style.display = 'block';
+            }
+        });
+        function closeDelegationNotification() {
+            document.getElementById('delegationNotification').style.display = 'none';
+            localStorage.setItem('delegationNotificationClosed', 'true');
+        }
+    </script>
+    <?php endif; ?>
+<?php endif; ?>
