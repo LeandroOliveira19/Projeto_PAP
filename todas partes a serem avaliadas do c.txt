@@ -1,0 +1,34 @@
+todas partes a serem avaliadas do corpo PAP
+
+imc
+gordura 
+gordura_kg 
+morfotipo 
+gordura_visceral 
+proteinas 
+musculo_esqueletico 
+gordura_subcutanea 
+  massa_muscular_kg 
+agua
+idade_metabolica 
+    massa_mineral_ossea
+ombros
+peitoral_dorsal
+cintura 
+abdominal 
+quadril 
+braco_direito 
+braco_esquerdo 
+coxa_direita 
+coxa_esquerda 
+perna_direita 
+perna_esquerda 
+tricipital 
+subescapular 
+bicipital 
+   peitoral
+axilar_media 
+abdominal_plicometria 
+    supra_iliaca 
+coxa 
+geminal
