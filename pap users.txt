@@ -1,0 +1,53 @@
+-- Inserir usuários
+INSERT INTO users (name, email, password, role) VALUES
+('João Silva', 'joao@example.com', SHA2('senha123', 256), 'client'),
+('Maria Souza', 'maria@example.com', SHA2('senha456', 256), 'trainer'),
+('Carlos Oliveira', 'carlos@example.com', SHA2('senha789', 256), 'nutritionist');
+
+admin leandro=password 
+
+-- Inserir cliente (João Silva)
+INSERT INTO clients (user_id, weight, height, activity_level) VALUES
+(1, 75.5, 1.80, 'Moderado');
+
+-- Inserir plano de treino (criado por Maria Souza para João Silva)
+INSERT INTO workout_plans (client_id, trainer_id, plan_details) VALUES
+(1, 2, 'Treino A: Segunda-feira - Musculação; Quarta-feira - Cardio; Sexta-feira - Funcional.');
+
+-- Inserir plano alimentar (criado por Carlos Oliveira para João Silva)
+INSERT INTO diet_plans (client_id, nutritionist_id, plan_details) VALUES
+(1, 3, 'Café da manhã: Omelete com vegetais; Almoço: Frango grelhado com arroz integral; Jantar: Salada de quinoa.');
+
+
+
+
+
+Aviso ao cliente quando a data estiver a faltar 1 hora .
+Enviar um email para a pessoa apos a mesma ter feito a inscrição na aula.
+e as inscrições das aulas so são abertas 48 horas antes.
+e caso a lotação da aula esteja cheia é possível colocar mais uma pessoa caso ela seja uma convidada sendo ela inserida pela administração.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+criar registro do cliente na administração e ao fazer lo enviar lhe um email, onde ele quando entrar com o login que a administração ser obrigado a mudar a password do mesmo.
+
+criar colaborador onde ele so poderá ter acesso a informações do cliente /alterar ou eliminar.
+e a administração terá acesso aos colaboradores todos onde poderá eliminar los alterar los .
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+colocar na adição dos treinos uma descrição nos treinos genericos, e ter uma tabela com opões de exercicios mas deixar a descrição dos treinos.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+colocar o plano de treino a ser o ativo sempre que é adicionado um ou editado o mesmo.
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+resolver o problema de abrir os detalhes do treino em dois clientes em simultâneo, e de não ter imagem nos dias de treino do cliente.
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+resolver o problema de não conseguir fazer com que apareça os exercícios quando é pressionado a opção ver exercícios da pagina workout_hub.php
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+fazer no final da pap com que ela seja aberta em um servidor para que fique online, assim posso usar o "online" e o "last seen", ou ate mesmo a quanto tempo teve online no chat entre utilizadores do site.
+
+
+
+
+
+
+

@@ -1,0 +1,13 @@
+Explicação do porque criei uma tabela nova (workout_plans_days) ao invés de usar a tabela workout_plans que já tinha na base de dados.
+
+The Problem with Putting Everything in workout_plans:
+
+If we tried to store the day-by-day details directly within the workout_plans table, we would run into several problems:
+
+Repeating Columns: We would need to add columns like day1_name, day1_details, day1_option_id, day2_name, day2_details, day2_option_id, and so on, for each day of the week. This would lead to:
+Redundancy: Most workout plans have a similar structure (e.g., 7 days). We would be repeating the same column names over and over.
+Wasted Space: If a plan only had 3 days, the columns for days 4-7 would be empty (NULL), wasting space.
+Limited Flexibility: If we wanted to add more days or change the number of days, we would have to alter the table structure (add or remove columns).
+Difficult Queries: Querying and managing the data would become very complex. We would have to write complex queries to access the details for each day.
+Non-Atomic Data: Each day's details (name, option, details) are logically a single unit. Storing them in separate columns breaks this atomicity.
+Violation of Normalization: This approach violates database normalization principles, specifically the First Normal Form (1NF). 1NF states that each column should contain atomic (indivisible) values, and there should be no repeating groups of columns.
