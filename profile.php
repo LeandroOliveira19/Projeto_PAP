@@ -25,26 +25,57 @@ $page_error = ''; // Para erros de fetch
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_picture'])) {
     // ... (código de upload de foto - sem alterações) ...
     if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-        $file = $_FILES['profile_picture']; $upload_dir = 'assets/img/profile_pics/';
-        $allowed_types = ['image/jpeg', 'image/png', 'image/gif']; $max_size = 5 * 1024 * 1024;
-        if (!is_dir($upload_dir)) { mkdir($upload_dir, 0777, true); }
+        $file = $_FILES['profile_picture'];
+        $upload_dir = 'assets/img/profile_pics/';
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+        $max_size = 5 * 1024 * 1024;
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
         if (in_array($file['type'], $allowed_types) && $file['size'] <= $max_size) {
             $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
             $new_filename = 'user_' . $user_id . '_' . time() . '.' . $file_extension;
             $upload_path = $upload_dir . $new_filename;
             try {
-                $stmt_old_pic = $pdo->prepare("SELECT profile_picture FROM users WHERE id = ?"); $stmt_old_pic->execute([$user_id]);
+                $stmt_old_pic = $pdo->prepare("SELECT profile_picture FROM users WHERE id = ?");
+                $stmt_old_pic->execute([$user_id]);
                 $old_pic_filename = $stmt_old_pic->fetchColumn();
-                if ($old_pic_filename && file_exists($upload_dir . $old_pic_filename)) { unlink($upload_dir . $old_pic_filename); }
-            } catch (PDOException $e) { error_log("Error deleting old pic: " . $e->getMessage()); }
+                if ($old_pic_filename && file_exists($upload_dir . $old_pic_filename)) {
+                    unlink($upload_dir . $old_pic_filename);
+                }
+            } catch (PDOException $e) {
+                error_log("Error deleting old pic: " . $e->getMessage());
+            }
             if (move_uploaded_file($file['tmp_name'], $upload_path)) {
                 try {
-                    $stmt_update = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?"); $stmt_update->execute([$new_filename, $user_id]);
-                    $_SESSION['profile_picture'] = $new_filename; $message = 'Foto atualizada!'; $message_type = 'success';
-                } catch (PDOException $e) { $message = 'Erro BD (foto).'; $message_type = 'danger'; error_log("DB Error updating profile picture: " . $e->getMessage()); if (file_exists($upload_path)) { unlink($upload_path); } }
-            } else { $message = 'Erro ao mover ficheiro.'; $message_type = 'danger'; }
-        } elseif ($file['size'] > $max_size) { $message = 'Ficheiro > 5MB.'; $message_type = 'danger'; } else { $message = 'Tipo inválido (JPG, PNG, GIF).'; $message_type = 'danger'; }
-    } elseif (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] !== UPLOAD_ERR_NO_FILE) { $message = 'Erro upload: ' . $_FILES['profile_picture']['error']; $message_type = 'danger'; }
+                    $stmt_update = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
+                    $stmt_update->execute([$new_filename, $user_id]);
+                    $_SESSION['profile_picture'] = $new_filename;
+                    $message = 'Foto atualizada!';
+                    $message_type = 'success';
+                } catch (PDOException $e) {
+                    $message = 'Erro BD (foto).';
+                    $message_type = 'danger';
+                    error_log("DB Error updating profile picture: " . $e->getMessage());
+                    if (file_exists($upload_path)) {
+                        unlink($upload_path);
+                    }
+                }
+            } else {
+                $message = 'Erro ao mover ficheiro.';
+                $message_type = 'danger';
+            }
+        } elseif ($file['size'] > $max_size) {
+            $message = 'Ficheiro > 5MB.';
+            $message_type = 'danger';
+        } else {
+            $message = 'Tipo inválido (JPG, PNG, GIF).';
+            $message_type = 'danger';
+        }
+    } elseif (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $message = 'Erro upload: ' . $_FILES['profile_picture']['error'];
+        $message_type = 'danger';
+    }
 }
 
 // Handle Details Update (Condicional baseado no role)
@@ -53,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
     $name = trim(filter_input(INPUT_POST, 'name', FILTER_SANITIZE_STRING));
     $email = trim(filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL));
     $numero_telemovel = trim(filter_input(INPUT_POST, 'numero_telemovel', FILTER_SANITIZE_STRING));
+    $gender = trim(filter_input(INPUT_POST, 'gender', FILTER_SANITIZE_STRING)); // Get gender
     $errors = [];
 
     // Campos específicos do cliente
@@ -61,10 +93,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
     $activity_level = null;
     // Campos específicos do cliente (Número de Sócio é automático, não vem do POST)
     // $membership_number = null; // Removido, pois será o client_table_id
+    $date_of_birth = null;
     $profession = null;
     $gym_frequency = null;
     $health_issues = null;
-    
     if ($user_role === 'client') {
         $height_str = str_replace(',', '.', trim($_POST['height'] ?? ''));
         $weight_str = str_replace(',', '.', trim($_POST['weight'] ?? ''));
@@ -72,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
         $height = ($height_str !== '' && is_numeric($height_str)) ? (float)$height_str : null;
         $weight = ($weight_str !== '' && is_numeric($weight_str)) ? (float)$weight_str : null;
         // Número de Sócio não é editável pelo cliente, não precisa pegar do POST.
+        $date_of_birth = trim(filter_input(INPUT_POST, 'date_of_birth', FILTER_SANITIZE_STRING));
         $profession = trim(filter_input(INPUT_POST, 'profession', FILTER_SANITIZE_STRING));
         $gym_frequency = trim(filter_input(INPUT_POST, 'gym_frequency', FILTER_SANITIZE_STRING)); // Este agora virá do select
         $health_issues = trim(filter_input(INPUT_POST, 'health_issues', FILTER_SANITIZE_STRING));
@@ -81,6 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
     if (empty($name)) $errors[] = "Nome obrigatório.";
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "E-mail inválido.";
     if (strlen($numero_telemovel) > 25) $errors[] = "Número de telemóvel demasiado longo.";
+    
+    // Validate gender
+    $allowed_genders = ['male', 'female', 'other', 'prefer_not_say', '']; // Allow empty to unset
+    if (!in_array($gender, $allowed_genders)) {
+        $errors[] = "Género inválido selecionado.";
+    }
 
 
     // Check email uniqueness (comum)
@@ -88,8 +127,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
         try {
             $stmt_check_email = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
             $stmt_check_email->execute([$email, $user_id]);
-            if ($stmt_check_email->fetch()) { $errors[] = "Este e-mail já está em uso por outra conta."; }
-        } catch (PDOException $e) { $errors[] = "Erro BD (email check)."; error_log("DB Error checking email: " . $e->getMessage()); }
+            if ($stmt_check_email->fetch()) {
+                $errors[] = "Este e-mail já está em uso por outra conta.";
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Erro BD (email check).";
+            error_log("DB Error checking email: " . $e->getMessage());
+        }
     }
 
     // Se não houver erros, atualiza o banco de dados
@@ -97,12 +141,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
         try {
             $pdo->beginTransaction();
 
-            $params_user = [$name, $email];
-            $sql_user = "UPDATE users SET name = ?, email = ?";
-            $params_user[] = ($numero_telemovel === '') ? null : $numero_telemovel;
-            $sql_user .= ", numero_telemovel = ?";
-            $sql_user .= " WHERE id = ?";
-            $params_user[] = $user_id;
+            // Update users table (common fields + gender)
+            $sql_user = "UPDATE users SET name = ?, email = ?, gender = ?, numero_telemovel = ? WHERE id = ?";
+            $params_user = [
+                $name,
+                $email,
+                ($gender === '') ? null : $gender,
+                ($numero_telemovel === '') ? null : $numero_telemovel,
+                $user_id
+            ];
             $stmt_user = $pdo->prepare($sql_user);
             $stmt_user->execute($params_user);
 
@@ -112,44 +159,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
                 $stmt_client_check->execute([$user_id]);
                 if ($stmt_client_check->fetch()) {
                     // *** ATUALIZADO: Inclui os novos campos no UPDATE ***
-                    // Removido membership_number do update
+                    // health_issues foi movido para a posição correta, logo antes da data de nascimento
                     $stmt_client = $pdo->prepare("
                         UPDATE clients SET
                             height = ?, weight = ?, activity_level = ?, 
-                            profession = ?, gym_frequency = ?, health_issues = ?
-                        WHERE user_id = ?
+                            profession = ?, gym_frequency = ?, health_issues = ?, date_of_birth = ?
+                        WHERE user_id = ? 
                     ");
                     $stmt_client->execute([
-                        $height, $weight, $activity_level,
+                        $height,
+                        $weight,
+                        $activity_level,
                         ($profession === '') ? null : $profession,
                         ($gym_frequency === '') ? null : $gym_frequency,
                         ($health_issues === '') ? null : $health_issues,
+                        ($date_of_birth === '') ? null : $date_of_birth,
                         $user_id
                     ]);
                 } else {
                     // *** ATUALIZADO: Inclui os novos campos no INSERT ***
-                    // Removido membership_number do insert (será NULL por defeito na BD se a coluna existir e permitir NULL)
-                    // Se a coluna foi removida, não há problema.
-                    $stmt_client = $pdo->prepare("
-                        INSERT INTO clients (user_id, height, weight, activity_level, profession, gym_frequency, health_issues)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    // Adicionando date_of_birth no insert
+                    $stmt_client = $pdo->prepare(" 
+                        INSERT INTO clients (user_id, height, weight, activity_level, profession, gym_frequency, health_issues, date_of_birth) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
                     ");
-                    $stmt_client->execute([$user_id, $height, $weight, $activity_level, ($profession === '') ? null : $profession, ($gym_frequency === '') ? null : $gym_frequency, ($health_issues === '') ? null : $health_issues]);
+                    $stmt_client->execute([
+                        $user_id,
+                        $height,
+                        $weight,
+                        $activity_level,
+                        ($profession === '') ? null : $profession,
+                        ($gym_frequency === '') ? null : $gym_frequency,
+                        ($date_of_birth === '') ? null : $date_of_birth,
+                        ($health_issues === '') ? null : $health_issues
+                    ]);
                 }
             }
 
             $pdo->commit();
+            // Atualiza o nome na sessão se foi alterado
+            if ($_SESSION['name'] !== $name) {
+                $_SESSION['name'] = $name;
+            }
 
-            if ($_SESSION['name'] !== $name) { $_SESSION['name'] = $name; }
-
-            $message = 'Detalhes atualizados com sucesso!'; $message_type = 'success';
+            $message = 'Detalhes atualizados com sucesso!';
+            $message_type = 'success';
         } catch (PDOException $e) {
             $pdo->rollBack();
-            $message = 'Erro BD ao atualizar detalhes.'; $message_type = 'danger';
+            $message = 'Erro BD ao atualizar detalhes.';
+            $message_type = 'danger';
             error_log("DB Error updating profile details for role {$user_role}: " . $e->getMessage());
         }
     } else {
-        $message = implode('<br>', $errors); $message_type = 'danger';
+        $message = implode('<br>', $errors);
+        $message_type = 'danger';
     }
 }
 // --- FIM: Lógica de POST ---
@@ -157,27 +220,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_details'])) {
 
 // --- Fetch Data (Condicional baseado no role) ---
 $profile_data = []; // Inicializa
+$sql = "SELECT u.name, u.email, u.numero_telemovel, u.profile_picture, u.gender"; // Added u.gender
+$params = [$user_id];
 try {
-    $sql = "SELECT u.name, u.email, u.numero_telemovel, u.profile_picture";
-    $params = [$user_id];
 
     // Adiciona JOIN e colunas específicas para clientes
     if ($user_role === 'client') {
-        // *** ATUALIZADO: Seleciona c.id como client_table_id e os outros campos ***
+        // Adiciona data de nascimento na seleção do cliente
         // A coluna `membership_number` foi removida da tabela, então não é mais selecionada.
-        $sql .= ", c.id as client_table_id, c.height, c.weight, c.activity_level, c.profession, c.gym_frequency, c.health_issues ";
+        $sql .= ", c.id as client_table_id, c.height, c.weight, c.activity_level, c.profession, c.gym_frequency, c.health_issues, c.date_of_birth "; // Added c.date_of_birth
         $sql .= " FROM users u LEFT JOIN clients c ON u.id = c.user_id WHERE u.id = ?";
     } else {
         // Para outros roles, só busca da tabela users
         $sql .= " FROM users u WHERE u.id = ?";
     }
 
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $profile_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$profile_data) { throw new Exception("Dados do utilizador não encontrados."); }
-
+    if (!$profile_data) {
+        throw new Exception("Dados do utilizador não encontrados.");
+    }
 } catch (Exception $e) {
     $page_error = 'Erro ao carregar dados do perfil: ' . $e->getMessage();
     error_log("Error fetching profile data for user $user_id (role: $user_role): " . $e->getMessage());
@@ -206,16 +271,24 @@ if ($user_role === 'client') {
 } elseif ($user_role === 'nutritionist') {
     if (file_exists('sidebar_nutritionist.php')) {
         include 'sidebar_nutritionist.php';
-    } else { echo "<!-- Erro: sidebar_nutritionist.php não encontrado. -->"; }
+    } else {
+        echo "<!-- Erro: sidebar_nutritionist.php não encontrado. -->";
+    }
 } elseif ($user_role === 'admin') {
     if (file_exists('sidebar_admin.php')) {
         include 'sidebar_admin.php';
-    } else { echo "<!-- Erro: sidebar_admin.php não encontrado. -->"; }
+    } else {
+        echo "<!-- Erro: sidebar_admin.php não encontrado. -->";
+    }
 } elseif ($user_role === 'receptionist') { // ADICIONADO: Condição para Recepcionista
     if (file_exists('sidebar_receptionist.php')) {
         include 'sidebar_receptionist.php';
-    } else { echo "<!-- Erro: sidebar_receptionist.php não encontrado. -->"; }
-} else { echo "<!-- Role desconhecido ou não definido - Nenhuma sidebar específica. -->"; }
+    } else {
+        echo "<!-- Erro: sidebar_receptionist.php não encontrado. -->";
+    }
+} else {
+    echo "<!-- Role desconhecido ou não definido - Nenhuma sidebar específica. -->";
+}
 ?>
 
 
@@ -224,11 +297,11 @@ if ($user_role === 'client') {
     <!-- Título Dinâmico (sem alterações) -->
     <h2>
         <?php
-            if ($user_role === 'client') echo "Meu Perfil e Definições";
-            elseif ($user_role === 'trainer') echo "Perfil do Treinador";
-            elseif ($user_role === 'nutritionist') echo "Perfil do Nutricionista";
-            elseif ($user_role === 'admin') echo "Perfil do Administrador";
-            else echo "Meu Perfil";
+        if ($user_role === 'client') echo "Meu Perfil e Definições";
+        elseif ($user_role === 'trainer') echo "Perfil do Treinador";
+        elseif ($user_role === 'nutritionist') echo "Perfil do Nutricionista";
+        elseif ($user_role === 'admin') echo "Perfil do Administrador";
+        else echo "Meu Perfil";
         ?>
     </h2>
 
@@ -238,7 +311,8 @@ if ($user_role === 'client') {
 
         <?php if ($message): ?>
             <div class="alert alert-<?= htmlspecialchars($message_type) ?> alert-dismissible fade show" role="alert">
-                <?= $message // Mensagem já pode conter HTML (<br>), não usar htmlspecialchars aqui ?>
+                <?= $message // Mensagem já pode conter HTML (<br>), não usar htmlspecialchars aqui 
+                ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
@@ -259,7 +333,8 @@ if ($user_role === 'client') {
                             <button type="button" id="edit-profile-button" class="btn btn-outline-primary btn-sm mt-2">
                                 <i class="fas fa-cog me-1"></i> Definições do Perfil
                             </button>
-                            <?php if ($user_role === 'client'): // Botão Estatísticas SÓ para clientes ?>
+                            <?php if ($user_role === 'client'): // Botão Estatísticas SÓ para clientes 
+                            ?>
                                 <a href="client_statistics.php" class="btn btn-outline-info btn-sm mt-2">
                                     <i class="fas fa-chart-line me-1"></i> Ver Estatísticas
                                 </a>
@@ -274,8 +349,8 @@ if ($user_role === 'client') {
 
         <!-- === SECÇÃO DE DEFINIÇÕES (Escondida por padrão - Condicional Cliente) === -->
         <div id="settings-section" style="display: none;">
-             <h3 class="mb-4">Definições do Perfil</h3>
-             <div class="row g-4">
+            <h3 class="mb-4">Definições do Perfil</h3>
+            <div class="row g-4">
                 <!-- Coluna da Foto e Upload (Comum - sem alterações) -->
                 <div class="col-lg-4 col-md-5">
                     <div class="card text-center shadow-sm mb-4">
@@ -307,11 +382,25 @@ if ($user_role === 'client') {
                                         <label for="numero_telemovel" class="form-label">Telemóvel</label>
                                         <input type="tel" inputmode="tel" class="form-control" id="numero_telemovel" name="numero_telemovel" value="<?= htmlspecialchars($profile_data['numero_telemovel'] ?? '') ?>" placeholder="Ex: +351 912345678">
                                     </div>
+                                    <div class="col-md-6">
+                                        <label for="gender" class="form-label">Género</label>
+                                        <select class="form-select" id="gender" name="gender">
+                                            <option value="" <?= !isset($profile_data['gender']) || $profile_data['gender'] === '' || $profile_data['gender'] === null ? 'selected' : '' ?>>-- Selecione --</option>
+                                            <option value="male" <?= (isset($profile_data['gender']) && $profile_data['gender'] === 'male') ? 'selected' : '' ?>>Masculino</option>
+                                            <option value="female" <?= (isset($profile_data['gender']) && $profile_data['gender'] === 'female') ? 'selected' : '' ?>>Feminino</option>
+                                            <option value="other" <?= (isset($profile_data['gender']) && $profile_data['gender'] === 'other') ? 'selected' : '' ?>>Outro</option>
+                                            <option value="prefer_not_say" <?= (isset($profile_data['gender']) && $profile_data['gender'] === 'prefer_not_say') ? 'selected' : '' ?>>Prefiro não dizer</option>
+                                        </select>
+                                    </div>
 
-                                    <?php if ($user_role === 'client'): // Campos SÓ para clientes ?>
-                                        <div class="col-md-6"> <label for="height" class="form-label">Altura (m)</label> <input type="text" inputmode="decimal" class="form-control" id="height" name="height" placeholder="Ex: 1.75" value="<?= htmlspecialchars(isset($profile_data['height']) ? number_format($profile_data['height'], 2, ',', '') : '') ?>"> </div>
-                                        <div class="col-md-6"> <label for="weight" class="form-label">Peso (kg)</label> <input type="text" inputmode="decimal" class="form-control" id="weight" name="weight" placeholder="Ex: 70,5" value="<?= htmlspecialchars(isset($profile_data['weight']) ? number_format($profile_data['weight'], 1, ',', '') : '') ?>"> </div>
-                                        
+                                    <?php if ($user_role === 'client'): // Campos SÓ para clientes 
+                                    ?>
+                                        <div class="col-md-6"> <label for="date_of_birth" class="form-label">Data de Nascimento</label>
+                                            <?php $date_value = $profile_data['date_of_birth'] ?? '';
+                                             if (!empty($date_value)) {
+                                                 $date_value = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_value) ? $date_value : date('Y-m-d', strtotime($date_value));
+                                             } ?> <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" value="<?= htmlspecialchars($date_value) ?>">
+                                        </div>
                                         <!-- *** NOVOS CAMPOS PARA CLIENTE *** -->
                                         <!-- Número de Sócio agora é readonly e usa client_table_id -->
                                         <div class="col-md-6">
@@ -341,7 +430,14 @@ if ($user_role === 'client') {
                                             <label for="health_issues" class="form-label">Problemas de Saúde Relevantes</label>
                                             <textarea class="form-control" id="health_issues" name="health_issues" rows="3" placeholder="Indique alergias, lesões, condições médicas, etc."><?= htmlspecialchars($profile_data['health_issues'] ?? '') ?></textarea>
                                         </div>
-                                        <div class="col-md-6"> <label for="activity_level" class="form-label">Nível Atividade</label> <select class="form-select" id="activity_level" name="activity_level"> <option value="" <?= empty($profile_data['activity_level']) ? 'selected' : '' ?>>-- Selecione --</option> <option value="Sedentário" <?= ($profile_data['activity_level'] ?? '') == 'Sedentário' ? 'selected' : '' ?>>Sedentário</option> <option value="Leve" <?= ($profile_data['activity_level'] ?? '') == 'Leve' ? 'selected' : '' ?>>Leve</option> <option value="Moderado" <?= ($profile_data['activity_level'] ?? '') == 'Moderado' ? 'selected' : '' ?>>Moderado</option> <option value="Ativo" <?= ($profile_data['activity_level'] ?? '') == 'Ativo' ? 'selected' : '' ?>>Ativo</option> <option value="Muito Ativo" <?= ($profile_data['activity_level'] ?? '') == 'Muito Ativo' ? 'selected' : '' ?>>Muito Ativo</option> </select> </div>
+                                        <div class="col-md-6"> <label for="activity_level" class="form-label">Nível Atividade</label> <select class="form-select" id="activity_level" name="activity_level">
+                                                <option value="" <?= empty($profile_data['activity_level']) ? 'selected' : '' ?>>-- Selecione --</option>
+                                                <option value="Sedentário" <?= ($profile_data['activity_level'] ?? '') == 'Sedentário' ? 'selected' : '' ?>>Sedentário</option>
+                                                <option value="Leve" <?= ($profile_data['activity_level'] ?? '') == 'Leve' ? 'selected' : '' ?>>Leve</option>
+                                                <option value="Moderado" <?= ($profile_data['activity_level'] ?? '') == 'Moderado' ? 'selected' : '' ?>>Moderado</option>
+                                                <option value="Ativo" <?= ($profile_data['activity_level'] ?? '') == 'Ativo' ? 'selected' : '' ?>>Ativo</option>
+                                                <option value="Muito Ativo" <?= ($profile_data['activity_level'] ?? '') == 'Muito Ativo' ? 'selected' : '' ?>>Muito Ativo</option>
+                                            </select> </div>
                                     <?php endif; ?>
                                 </div>
                                 <hr class="my-4">
@@ -357,25 +453,201 @@ if ($user_role === 'client') {
         </div>
         <!-- === FIM SECÇÃO DE DEFINIÇÕES === -->
 
-    <?php endif; // End else for page_error check ?>
+    <?php endif; // End else for page_error check 
+    ?>
 
 </main> <!-- Fim .main-content -->
 
 <!-- JavaScript para alternar visibilidade (sem alterações) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const viewSection = document.getElementById('profile-view-section');
+    // Script para arrastar, duplo clique e dropdown do ícone de perfil
+    const profileIconContainer = document.querySelector('.profile-icon-container');
+    if (!profileIconContainer) return;
+
+    const profileIconLink = document.getElementById('profileIconLink');
+    const profileDropdown = document.getElementById('profileDropdown');
+
+    let isDragging = false;
+    let dragStarted = false; // Flag para saber se o arrasto realmente começou
+    let offsetX, offsetY;
+
+    let lastTapTime = 0;
+    const doubleTapDelay = 300; // ms
+    let tapCount = 0;
+    let tapTimer = null;
+
+    // --- Lógica de Clique/Duplo Clique/Dropdown ---
+    if (profileIconLink && profileDropdown) {
+        profileIconLink.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevenir navegação padrão do link
+
+            if (dragStarted) { // Se um arrasto acabou de acontecer, não processar como clique/duplo clique
+                dragStarted = false;
+                return;
+            }
+
+            tapCount++;
+            const currentTime = new Date().getTime();
+
+            if (tapCount === 1) {
+                lastTapTime = currentTime;
+                tapTimer = setTimeout(function() {
+                    // Ação de clique único: Abrir/Fechar dropdown
+                    profileDropdown.classList.toggle('show');
+                    tapCount = 0; // Reset
+                }, doubleTapDelay);
+            } else if (tapCount === 2) {
+                if (currentTime - lastTapTime < doubleTapDelay) {
+                    // Duplo clique
+                    clearTimeout(tapTimer);
+                    window.location.href = profileIconLink.href; // Navegar para o perfil
+                    tapCount = 0; // Reset
+                    lastTapTime = 0; // Reset para evitar falso positivo
+                    profileDropdown.classList.remove('show'); // Esconder dropdown se estiver aberto
+                } else {
+                    // Segundo clique muito espaçado, tratar como primeiro de uma nova sequência
+                    tapCount = 1;
+                    lastTapTime = currentTime;
+                    clearTimeout(tapTimer); // Limpa o timer anterior
+                    tapTimer = setTimeout(function() {
+                        profileDropdown.classList.toggle('show');
+                        tapCount = 0;
+                    }, doubleTapDelay);
+                }
+            }
+        });
+
+        // Fechar dropdown se clicar fora
+        document.addEventListener('click', function(event) {
+            if (!profileIconContainer.contains(event.target) && profileDropdown.classList.contains('show')) {
+                profileDropdown.classList.remove('show');
+                tapCount = 0; // Reset tap count para evitar que um clique fora e depois um clique no ícone seja duplo clique
+            }
+        });
+    }
+
+    // --- Lógica de Arrastar (com a flag dragStarted) ---
+    const savedPosition = localStorage.getItem('profileIconPosition');
+    if (savedPosition) {
+        try {
+            const pos = JSON.parse(savedPosition);
+            profileIconContainer.style.position = 'fixed';
+            profileIconContainer.style.left = pos.left;
+            profileIconContainer.style.top = pos.top;
+            profileIconContainer.style.right = 'auto';
+            profileIconContainer.style.bottom = 'auto';
+        } catch (e) {
+            console.error("Failed to parse saved profile icon position:", e);
+            localStorage.removeItem('profileIconPosition');
+        }
+    }
+
+    function startDrag(e) {
+        // Apenas botão primário do rato ou toque
+        if (e.type === 'mousedown' && e.button !== 0) return;
+
+        // Se o dropdown estiver aberto, não iniciar arrasto para permitir interação com o dropdown
+        if (profileDropdown && profileDropdown.classList.contains('show')) {
+            return;
+        }
+
+        isDragging = true;
+        dragStarted = false; // Reset no início de um potencial arrasto
+
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        const rect = profileIconContainer.getBoundingClientRect();
+        offsetX = clientX - rect.left;
+        offsetY = clientY - rect.top;
+
+        profileIconContainer.style.position = 'fixed';
+        profileIconContainer.style.right = 'auto';
+        profileIconContainer.style.bottom = 'auto';
+        // Aumentar z-index durante o arrasto para ficar sobre outros elementos
+        profileIconContainer.style.zIndex = '1055';
+
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('touchend', endDrag);
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        if (!dragStarted) {
+            if (profileDropdown && profileDropdown.classList.contains('show')) {
+                profileDropdown.classList.remove('show');
+                tapCount = 0; // Reset tap count
+            }
+        }
+        dragStarted = true;
+        if (e.cancelable) e.preventDefault();
+
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        let newLeft = clientX - offsetX;
+        let newTop = clientY - offsetY;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const elementWidth = profileIconContainer.offsetWidth;
+        const elementHeight = profileIconContainer.offsetHeight;
+        newLeft = Math.max(0, Math.min(newLeft, viewportWidth - elementWidth));
+        newTop = Math.max(0, Math.min(newTop, viewportHeight - elementHeight));
+        profileIconContainer.style.left = `${newLeft}px`;
+        profileIconContainer.style.top = `${newTop}px`;
+    }
+
+    function endDrag() {
+        if (!isDragging) return;
+
+        isDragging = false;
+
+        // Remove event listeners
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('touchend', endDrag);
+
+        // Save the final position
+        const finalPosition = {
+            left: profileIconContainer.style.left,
+            top: profileIconContainer.style.top
+        };
+        localStorage.setItem('profileIconPosition', JSON.stringify(finalPosition));
+    }
+
+    // Add event listeners for starting the drag
+    // Use capture phase for mousedown/touchstart to ensure we get the event before the link
+    profileIconContainer.addEventListener('mousedown', startDrag, true);
+    profileIconContainer.addEventListener('touchstart', startDrag, { passive: false, capture: true });
+
+    // Prevent the link from being dragged as an image
+    profileIconContainer.querySelector('a').addEventListener('dragstart', function(e) {
+        e.preventDefault();
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editProfileButton = document.getElementById('edit-profile-button');
+    const cancelEditButton = document.getElementById('cancel-edit-button');
+    const profileViewSection = document.getElementById('profile-view-section');
     const settingsSection = document.getElementById('settings-section');
-    const editButton = document.getElementById('edit-profile-button');
-    const cancelButton = document.getElementById('cancel-edit-button');
-    if (viewSection && settingsSection && editButton && cancelButton) {
-        editButton.addEventListener('click', function() { viewSection.style.display = 'none'; settingsSection.style.display = 'block'; });
-        cancelButton.addEventListener('click', function() { settingsSection.style.display = 'none'; viewSection.style.display = 'block'; });
-        <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($message || !empty($page_error) && empty($profile_data))): ?>
-            // Mantém a secção de definições visível se houve um POST com erro ou sucesso
-            viewSection.style.display = 'none'; settingsSection.style.display = 'block';
-        <?php endif; ?>
-    } else { console.error("Erro: Elementos essenciais (view/settings/buttons) não encontrados."); }
+
+    if (editProfileButton && profileViewSection && settingsSection) {
+        editProfileButton.addEventListener('click', function() {
+            profileViewSection.style.display = 'none';
+            settingsSection.style.display = 'block';
+        });
+    }
+
+    if (cancelEditButton && profileViewSection && settingsSection) {
+        cancelEditButton.addEventListener('click', function() {
+            settingsSection.style.display = 'none';
+            profileViewSection.style.display = 'block';
+        });
+    }
 });
 </script>
 <!-- FIM JAVASCRIPT VISIBILIDADE -->

@@ -326,6 +326,7 @@ if ($preselected_client_id) {
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="selectActionModalLabel">Escolha o tipo de ação</h5>
+        <button type="button" class="btn btn-sm btn-outline-info ms-auto me-2" data-action-type="note" id="noteActionHeaderBtn">Nota Livre / Instrução</button>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -334,7 +335,6 @@ if ($preselected_client_id) {
           <button type="button" class="list-group-item list-group-item-action" data-action-type="rest_time">Tempo de Descanso</button>
           <button type="button" class="list-group-item list-group-item-action" data-action-type="tempo">Tempo (Ex: 3-1-1-0)</button>
           <button type="button" class="list-group-item list-group-item-action" data-action-type="rpe">RPE (Esforço Percebido)</button>
-          <button type="button" class="list-group-item list-group-item-action" data-action-type="note">Nota Livre / Instrução</button>
           <button type="button" class="list-group-item list-group-item-action" data-action-type="cardio">Cardio Específico</button>
         </div>
       </div>
@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const actionTemplates = document.getElementById('action-templates');
     const selectActionModalEl = document.getElementById('selectActionModal');
     const selectActionModal = new bootstrap.Modal(selectActionModalEl);
-    const selectActionModalBody = selectActionModalEl.querySelector('.modal-body .list-group');
+    // const selectActionModalBody = selectActionModalEl.querySelector('.modal-body .list-group'); // Removido, pois o listener será mais genérico
     let currentDayActionsContainer = null;
 
     function createActionElement(type, data = {}) {
@@ -416,8 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (removeButton) { removeAction(removeButton); }
     });
 
-    selectActionModalBody.addEventListener('click', function(event) {
-        const actionButton = event.target.closest('.list-group-item-action');
+    selectActionModalEl.addEventListener('click', function(event) { // Ouve cliques em todo o modal
+        const actionButton = event.target.closest('[data-action-type]'); // Procura qualquer elemento com data-action-type
         if (actionButton) {
             const actionType = actionButton.dataset.actionType;
             if (currentDayActionsContainer && actionType) {

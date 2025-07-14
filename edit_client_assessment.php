@@ -78,13 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $client_id && !$page_error) {
                 'client_id', 'assessment_date', 'recorded_by_user_id', 'weight', 'height',
                 'fat_mass_percentage', 'fat_mass_kg', 'gordura_subcutanea', 'visceral_fat_index',
                 'muscle_mass_kg', 'lean_mass_kg', 'proteinas', 'bone_mass_kg', 'water_percentage',
-                'idade_metabolica', 'morfotipo', 'lean_mass_percentage',
+                /* 'idade_metabolica', */ 'morfotipo', 'lean_mass_percentage', // idade_metabolica removido
                 'ombros', 'peitoral_dorsal', 'cintura', 'abdominal', 'quadril', 'braco_direito',
                 'braco_esquerdo', 'coxa_direita', 'coxa_esquerda', 'perna_direita', 'perna_esquerda',
                 'tricipital', 'subescapular', 'bicipital', 'peitoral', 'axilar_media',
                 'abdominal_plicometria', 'supra_iliaca', 'coxa', 'geminal'
             ];
-
             $sql_columns = [];
             $sql_placeholders = [];
             $params = [];
@@ -112,8 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $client_id && !$page_error) {
                     // Campos numéricos (decimais e inteiros)
                     $numeric_fields = [
                         'weight', 'height', 'fat_mass_percentage', 'fat_mass_kg', 'gordura_subcutanea',
-                        'visceral_fat_index', 'muscle_mass_kg', 'lean_mass_kg', 'proteinas', 'bone_mass_kg',
-                        'water_percentage', 'idade_metabolica', 'lean_mass_percentage',
+                        'visceral_fat_index', 'muscle_mass_kg', 'lean_mass_kg', 'proteinas', 'bone_mass_kg', // idade_metabolica removido da lista de processamento numérico específico
+                        'water_percentage', /*'idade_metabolica',*/ 'lean_mass_percentage',
                         'ombros', 'peitoral_dorsal', 'cintura', 'abdominal', 'quadril', 'braco_direito',
                         'braco_esquerdo', 'coxa_direita', 'coxa_esquerda', 'perna_direita', 'perna_esquerda',
                         'tricipital', 'subescapular', 'bicipital', 'peitoral', 'axilar_media',
@@ -126,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $client_id && !$page_error) {
                             $params[$field] = null;
                         } else {
                             // Determina se é INT ou FLOAT
-                            if (in_array($field, ['visceral_fat_index', 'idade_metabolica'])) {
+                        if (in_array($field, ['visceral_fat_index' /*, 'idade_metabolica'*/])) { // idade_metabolica removido
                                 $params[$field] = (int)$value;
                             } else {
                                 $params[$field] = (float)$value;
@@ -314,10 +313,6 @@ function getFieldValue($field_name, $data_array, $decimals = null) {
                                      <div class="col-md-4">
                                         <label for="water_percentage" class="form-label">% Água Corporal</label>
                                         <input type="text" inputmode="decimal" class="form-control" id="water_percentage" name="water_percentage" placeholder="Ex: 58,5" value="<?= getFieldValue('water_percentage', $client_data_for_form, 1) ?>">
-                                    </div>
-                                     <div class="col-md-4">
-                                        <label for="idade_metabolica" class="form-label">Idade Metabólica</label>
-                                        <input type="number" class="form-control" id="idade_metabolica" name="idade_metabolica" placeholder="Ex: 28" value="<?= getFieldValue('idade_metabolica', $client_data_for_form) ?>">
                                     </div>
                                      <div class="col-md-4">
                                         <label for="morfotipo" class="form-label">Morfotipo</label>

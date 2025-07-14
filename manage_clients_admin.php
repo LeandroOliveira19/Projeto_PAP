@@ -99,7 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_client'])) {
         $stmt_client = $pdo->prepare("INSERT INTO clients (user_id) VALUES (?)");
         $stmt_client->execute([$new_user_id]);
 
-        if (sendConfirmationEmail($email, $name, $token, "register_admin", $temp_password)) {
+        // Preparar links diferentes
+        //$server_link = "https://2fe4-148-63-187-132.ngrok-free.app/Projeto_PAP/confirmar_email.php?token=$token"; // Substitua pelo seu link de servidor
+        $localhost_link = "http://mywellness.duckdns.org//Projeto_PAP/confirmar_email.php?token=$token"; // Ajuste o caminho se necessário
+
+        // Passar ambos os links para a função de email
+        if (sendConfirmationEmail($email, $name, $token, "register_admin", $temp_password, $server_link, $localhost_link)) {
             echo "<script>alert('Cliente criado! Email de confirmação enviado.'); window.location.href = 'manage_clients_admin.php';</script>";
         } else {
             error_log("Falha ao enviar email de confirmação para cliente: $email");

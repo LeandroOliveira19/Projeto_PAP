@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\xampp\htdocs\Projeto_PAP\chat.php
+// filepath: chat.php
 session_start();
 
 // Verifica se o usuário está logado
@@ -591,6 +591,15 @@ if ($user_role == 'client') {
     .message-bubble:has(img)::before, .message-bubble:has(video)::before {
         display: none;
     }
+    .message-actions {
+        display: none; /* Escondido por padrão */
+        position: absolute;
+        top: 2px;
+        background-color: rgba(255,255,255,0.8); /* Fundo para melhor visibilidade */
+        border-radius: 4px; padding: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .delete-message-btn { color: var(--chat-placeholder-text); padding: 0.2rem 0.4rem; font-size: 0.8em; }
+    .delete-message-btn:hover { color: var(--bs-danger); }
 
 
     .message-content {
@@ -746,8 +755,8 @@ if ($user_role == 'client') {
     }
 
     /* Estilos para Modal */
-    .modal-close-button { position: absolute; top: 15px; right: 15px; font-size: 1.5rem; background: rgba(0,0,0,0.5); border-radius: 50%; color: white; opacity: 0.8; padding: 0.5rem 0.8rem; line-height: 1; }
-    .modal-close-button:hover { opacity: 1; }
+    .modal-close-button { position: absolute; top: 15px; right: 15px; font-size: 1.8rem; background: white; border-radius: 0; color: white; opacity: 1; padding: 0; line-height: 1; border: none; text-shadow: 0 0 5px rgba(0,0,0,0.7); }
+    .modal-close-button:hover { opacity: 0.7; }
     .modal-media-container { /* ... */ }
     .modal-download-action { position: absolute; bottom: 20px; right: 20px; color: white; background: rgba(0,0,0,0.5); padding: 0.5rem 0.8rem; border-radius: 5px; text-decoration: none; font-size: 1.1rem; }
     .modal-download-action:hover { background: rgba(0,0,0,0.7); }
@@ -755,6 +764,63 @@ if ($user_role == 'client') {
     .predefined-bg-thumb-modal { width: 100px; height: 100px; object-fit: cover; border-radius: 5px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s ease; }
     .predefined-bg-thumb-modal:hover { border-color: var(--chat-list-active-border); }
 
+/* NEW: Audio Recording Styles */
+.animate-pulse {
+    animation: pulse 1s infinite;
+}
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+#recording-indicator {
+    display: flex; align-items: center; justify-content: space-between; background-color: var(--chat-input-bg); padding: 0.5rem; border-radius: 10px; margin-top: 0.5rem; /* Existing style */
+}
+
+/* NEW: Audio Preview Area Styles */
+#audio-preview-area {
+    padding: 10px;
+    background-color: var(--bs-light); /* Adapts to theme */
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+.dark-mode #audio-preview-area {
+    background-color: var(--bs-gray-700);
+}
+/* Estiliza a div interna que contém o player de áudio e o botão (para compactação e visual) */
+#audio-preview-area > div {
+    width: fit-content; /* Faz com que o contêiner se ajuste ao seu conteúdo */
+    margin-left: auto;   /* Centraliza o contêiner horizontalmente */
+    margin-right: auto;  /* Centraliza o contêiner horizontalmente */
+    max-width: 100%;     /* Garante que não exceda a largura do pai em telas pequenas */
+    border: 1px solid var(--bs-border-color); /* Adiciona uma borda sutil */
+    padding: 0.5rem; /* Reduced padding for compactness */
+    margin-bottom: 0.5rem; /* Space below the audio preview box */
+}
+
+#audio-preview-area audio {
+    /* Remove width: 100%; para que flex-grow-1 no HTML controle a largura dentro do contêiner flexível */
+    min-width: 150px; /* Opcional: define uma largura mínima para o player de áudio */
+    height: 38px; /* Standard height for audio controls */
+}
+
+/* Estilo para o botão 'X' de cancelar áudio na pré-visualização */
+#audio-preview-area .btn-close {
+    font-size: 0.7rem; /* Tamanho menor para o 'X' */
+    padding: 0.1rem; /* Padding reduzido */
+    margin-left: 0.3rem; /* Espaço à esquerda do botão */
+    background: none; /* Remove o fundo padrão do btn-close */
+    opacity: 0.7; /* Torna-o um pouco mais sutil */
+    transition: opacity 0.2s ease;
+}
+#audio-preview-area .btn-close:hover {
+    opacity: 1; /* Aumenta a opacidade no hover */
+}
+
+/* Garante que o botão do microfone é visível por padrão com alta especificidade */
+#audio-record-button {
+    display: inline-flex;
+}
 </style>
 
 <!-- Conteúdo Principal do Chat com Novo Layout -->
@@ -834,6 +900,10 @@ if ($user_role == 'client') {
                     <!-- Mensagens serão carregadas aqui -->
                 </div>
                 <div class="card-footer chat-input-area">
+                    <!-- NEW: Audio Preview Area -->
+                    <div id="audio-preview-area" class="mt-2" style="display: none;">
+                        <!-- Audio player and cancel button will go here -->
+                    </div>
                     <form id="chat-form" autocomplete="off">
                         <div class="input-group">
                             <button type="button" class="btn btn-icon" id="attach-button" title="Anexar ficheiro">
@@ -842,16 +912,26 @@ if ($user_role == 'client') {
                             <input type="file" id="file-input" accept="image/*,audio/*,video/*" style="display: none;">
                             <input type="text" id="message-input" class="form-control" placeholder="Digite sua mensagem..." aria-label="Mensagem">
                             <input type="hidden" id="receiver_id" value="<?= htmlspecialchars($active_chat_user_id) ?>">
+                            <!-- NEW: Audio Recording Button -->
+                            <button type="button" class="btn btn-icon" id="audio-record-button" title="Gravar Áudio">
+                                <i class="fas fa-microphone"></i>
+                            </button>
                             <button type="submit" class="btn btn-icon" id="send-button" aria-label="Enviar Mensagem">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
+                        <!-- NEW: File Preview Area -->
                         <div id="file-preview-area" class="mt-2" style="display: none;">
                             <span class="badge bg-light text-dark p-2">
                                 <i class="fas fa-file me-1"></i>
                                 <span id="selected-file-name"></span>
                                 <button type="button" class="btn-close btn-sm ms-2" aria-label="Remover ficheiro" id="remove-file-button"></button>
                             </span>
+                        </div>
+                        <!-- NEW: Recording Indicator -->
+                        <div id="recording-indicator" class="mt-2" style="display: none;">
+                            <span class="badge bg-danger"><i class="fas fa-circle me-1 animate-pulse"></i> Gravando... <span id="recording-timer">00:00</span></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="cancel-recording-button">Cancelar</button>
                         </div>
                     </form>
                 </div>
@@ -867,6 +947,175 @@ if ($user_role == 'client') {
         </div>
     </div>
 </main>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Script para arrastar, duplo clique e dropdown do ícone de perfil
+    const profileIconContainer = document.querySelector('.profile-icon-container');
+    if (!profileIconContainer) return;
+
+    const profileIconLink = document.getElementById('profileIconLink');
+    const profileDropdown = document.getElementById('profileDropdown');
+
+    let isDragging = false;
+    let dragStarted = false; // Flag para saber se o arrasto realmente começou
+    let offsetX, offsetY;
+
+    let lastTapTime = 0;
+    const doubleTapDelay = 300; // ms
+    let tapCount = 0;
+    let tapTimer = null;
+
+    // --- Lógica de Clique/Duplo Clique/Dropdown ---
+    if (profileIconLink && profileDropdown) {
+        profileIconLink.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevenir navegação padrão do link
+
+            if (dragStarted) { // Se um arrasto acabou de acontecer, não processar como clique/duplo clique
+                dragStarted = false;
+                return;
+            }
+
+            tapCount++;
+            const currentTime = new Date().getTime();
+
+            if (tapCount === 1) {
+                lastTapTime = currentTime;
+                tapTimer = setTimeout(function() {
+                    // Ação de clique único: Abrir/Fechar dropdown
+                    profileDropdown.classList.toggle('show');
+                    tapCount = 0; // Reset
+                }, doubleTapDelay);
+            } else if (tapCount === 2) {
+                if (currentTime - lastTapTime < doubleTapDelay) {
+                    // Duplo clique
+                    clearTimeout(tapTimer);
+                    window.location.href = profileIconLink.href; // Navegar para o perfil
+                    tapCount = 0; // Reset
+                    lastTapTime = 0; // Reset para evitar falso positivo
+                    profileDropdown.classList.remove('show'); // Esconder dropdown se estiver aberto
+                } else {
+                    // Segundo clique muito espaçado, tratar como primeiro de uma nova sequência
+                    tapCount = 1;
+                    lastTapTime = currentTime;
+                    clearTimeout(tapTimer); // Limpa o timer anterior
+                    tapTimer = setTimeout(function() {
+                        profileDropdown.classList.toggle('show');
+                        tapCount = 0;
+                    }, doubleTapDelay);
+                }
+            }
+        });
+
+        // Fechar dropdown se clicar fora
+        document.addEventListener('click', function(event) {
+            if (!profileIconContainer.contains(event.target) && profileDropdown.classList.contains('show')) {
+                profileDropdown.classList.remove('show');
+                tapCount = 0; // Reset tap count para evitar que um clique fora e depois um clique no ícone seja duplo clique
+            }
+        });
+    }
+
+    // --- Lógica de Arrastar (com a flag dragStarted) ---
+    const savedPosition = localStorage.getItem('profileIconPosition');
+    if (savedPosition) {
+        try {
+            const pos = JSON.parse(savedPosition);
+            profileIconContainer.style.position = 'fixed';
+            profileIconContainer.style.left = pos.left;
+            profileIconContainer.style.top = pos.top;
+            profileIconContainer.style.right = 'auto';
+            profileIconContainer.style.bottom = 'auto';
+        } catch (e) {
+            console.error("Failed to parse saved profile icon position:", e);
+            localStorage.removeItem('profileIconPosition');
+        }
+    }
+
+    function startDrag(e) {
+        // Apenas botão primário do rato ou toque
+        if (e.type === 'mousedown' && e.button !== 0) return;
+
+        // Se o dropdown estiver aberto, não iniciar arrasto para permitir interação com o dropdown
+        if (profileDropdown && profileDropdown.classList.contains('show')) {
+            return;
+        }
+
+        isDragging = true;
+        dragStarted = false; // Reset no início de um potencial arrasto
+
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        const rect = profileIconContainer.getBoundingClientRect();
+        offsetX = clientX - rect.left;
+        offsetY = clientY - rect.top;
+
+        profileIconContainer.style.position = 'fixed';
+        profileIconContainer.style.right = 'auto';
+        profileIconContainer.style.bottom = 'auto';
+        // Aumentar z-index durante o arrasto para ficar sobre outros elementos
+        profileIconContainer.style.zIndex = '1055';
+
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('touchend', endDrag);
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        if (!dragStarted) {
+            if (profileDropdown && profileDropdown.classList.contains('show')) {
+                profileDropdown.classList.remove('show');
+                tapCount = 0; // Reset tap count
+            }
+        }
+        dragStarted = true;
+        if (e.cancelable) e.preventDefault();
+
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        let newLeft = clientX - offsetX;
+        let newTop = clientY - offsetY;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const elementWidth = profileIconContainer.offsetWidth;
+        const elementHeight = profileIconContainer.offsetHeight;
+        newLeft = Math.max(0, Math.min(newLeft, viewportWidth - elementWidth));
+        newTop = Math.max(0, Math.min(newTop, viewportHeight - elementHeight));
+        profileIconContainer.style.left = `${newLeft}px`;
+        profileIconContainer.style.top = `${newTop}px`;
+    }
+
+    function endDrag() {
+        if (!isDragging) return;
+
+        isDragging = false;
+
+        // Remove event listeners
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('touchend', endDrag);
+
+        // Save the final position
+        const finalPosition = {
+            left: profileIconContainer.style.left,
+            top: profileIconContainer.style.top
+        };
+        localStorage.setItem('profileIconPosition', JSON.stringify(finalPosition));
+    }
+
+    // Add event listeners for starting the drag
+    // Use capture phase for mousedown/touchstart to ensure we get the event before the link
+    profileIconContainer.addEventListener('mousedown', startDrag, true);
+    profileIconContainer.addEventListener('touchstart', startDrag, { passive: false, capture: true });
+
+    // Prevent the link from being dragged as an image
+    profileIconContainer.querySelector('a').addEventListener('dragstart', function(e) {
+        e.preventDefault();
+    });
+});
+</script>
 
 <!-- Modais (Mantidos) -->
 <!-- Modal Media Preview -->
@@ -931,18 +1180,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const conversationListContainer = document.getElementById('conversation-list');
     const conversationListColumn = document.getElementById('conversation-list-column');
 
+    function formatTimestamp(sqlTimestamp) {
+        try {
+            const date = new Date(sqlTimestamp.includes('Z') || sqlTimestamp.includes('+') || sqlTimestamp.includes('-') ? sqlTimestamp : sqlTimestamp.replace(' ', 'T') + 'Z');
+            if (isNaN(date)) { return sqlTimestamp; }
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch (e) { return sqlTimestamp; }
+    }
+    // Helper for audio duration formatting (Global)
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
     // Seletores para personalização
     const chatBackgroundInputModal = document.getElementById('chat-background-input-modal');
     const setDefaultBackgroundButtonModal = document.getElementById('set-default-background-button-modal');
     const predefinedBgOptionsContainerModal = document.querySelector('.predefined-bg-options-modal');
     const sentBgInput = document.getElementById('chatSentBg');
     const sentTextInput = document.getElementById('chatSentText');
-    const receivedBgInput = document.getElementById('chatReceivedBg');
-    const receivedTextInput = document.getElementById('chatReceivedText');
+    const receivedBgInput = document.getElementById('chatReceivedBg'); // Corrected ID
+    const receivedTextInput = document.getElementById('chatReceivedText'); // Corrected ID
 
+    // NEW: Audio Recording Variables (Moved here to avoid redeclaration)
+    const audioRecordButton = document.getElementById('audio-record-button');
+    const recordingIndicator = document.getElementById('recording-indicator');
+    const recordingTimerSpan = document.getElementById('recording-timer');
+    const cancelRecordingButton = document.getElementById('cancel-recording-button');
+    const audioPreviewArea = document.getElementById('audio-preview-area'); // NEW: Audio Preview Area
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob;
+    let recordingStartTime;
+    let recordingTimerInterval;
     // --- Variáveis Globais ---
     const currentUserId = <?= json_encode($user_id) ?>;
-    const activeChatUserId = receiverIdInput ? parseInt(receiverIdInput.value, 10) : null;
+    let activeChatUserId = receiverIdInput ? parseInt(receiverIdInput.value, 10) : null;
     let isFetching = false;
     let pollingInterval;
     let selectedFile = null;
@@ -961,14 +1236,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
             }
         }, 100);
-    }
-
-    function formatTimestamp(sqlTimestamp) {
-        try {
-            const date = new Date(sqlTimestamp.includes('Z') || sqlTimestamp.includes('+') || sqlTimestamp.includes('-') ? sqlTimestamp : sqlTimestamp.replace(' ', 'T') + 'Z');
-            if (isNaN(date)) { return sqlTimestamp; }
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } catch (e) { return sqlTimestamp; }
     }
 
     // --- Funções de Exibição ---
@@ -1006,6 +1273,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 messageDiv.classList.add('message-bubble');
                 messageDiv.classList.add(isSent ? 'sent' : 'received');
 
+                // Adicionar ações (botões de apagar) - APENAS se não for 'deleted_globally' ou 'deleted_for_user'
+                if (msg.message_type !== 'deleted_globally' && msg.message_type !== 'deleted_for_user') {
+                    const messageActions = document.createElement('div');
+                    messageActions.classList.add('message-actions');
+
+                    if (isSent) {
+                        messageActions.style.right = '5px';
+                    } else {
+                        // Para mensagens recebidas, o remetente não pode apagar para todos,
+                        // então só mostramos "apagar para mim" para o receptor.
+                        messageActions.style.left = '5px';
+                    }
+
+                    // Botão "Apagar para mim" (sempre disponível se a mensagem não foi apagada)
+                    const deleteForMeButton = document.createElement('button');
+                    deleteForMeButton.classList.add('btn', 'btn-sm', 'btn-icon', 'delete-message-btn');
+                    deleteForMeButton.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteForMeButton.title = 'Apagar para mim';
+                    deleteForMeButton.dataset.messageId = msg.id;
+                    deleteForMeButton.dataset.scope = 'me';
+                    messageActions.appendChild(deleteForMeButton);
+
+                    // Botão "Apagar para todos" (apenas para o remetente e dentro do limite de tempo)
+                    if (isSent) { // SÓ MOSTRA SE A MENSAGEM FOI ENVIADA PELO UTILIZADOR ATUAL
+                        const messageTime = new Date(msg.timestamp.replace(' ', 'T') + 'Z'); // Garante que é UTC
+                        const currentTime = new Date();
+                        const timeDiffMinutes = (currentTime - messageTime) / (1000 * 60);
+
+                        if (timeDiffMinutes < 60) { // 60 minutos de limite para apagar para todos
+                            const deleteForAllButton = document.createElement('button');
+                            deleteForAllButton.classList.add('btn', 'btn-sm', 'btn-icon', 'delete-message-btn');
+                            deleteForAllButton.innerHTML = '<i class="fas fa-globe-europe"></i>'; // Ícone diferente
+                            deleteForAllButton.title = 'Apagar para todos';
+                            deleteForAllButton.dataset.messageId = msg.id;
+                            deleteForAllButton.dataset.scope = 'all';
+                            messageActions.appendChild(deleteForAllButton);
+                        }
+                    }
+                    messageDiv.appendChild(messageActions);
+                    messageDiv.onmouseenter = () => messageActions.style.display = 'inline-flex'; // Mostrar no hover
+                    messageDiv.onmouseleave = () => messageActions.style.display = 'none'; // Esconder
+                }
                 const messageContentDiv = document.createElement('div');
                 messageContentDiv.classList.add('message-content');
 
@@ -1038,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="waveform-container"></div>
                                 <div class="waveform-progress-overlay"></div>
                             </div>
-                            <span class="duration">00:00</span>
+                            <span class="duration">${msg.duration ? formatTime(msg.duration) : '00:00'}</span>
                         `;
                         messageContentDiv.appendChild(audioPlayerContainer);
                         setTimeout(() => setupAudioPlayer(msg.id), 0);
@@ -1053,13 +1362,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         messageContentDiv.appendChild(videoThumb);
                         break;
                     case 'text':
-                    default:
                         if (!msg.file_url && msg.message && messageContentDiv.children.length === 0) {
                              const textDiv = document.createElement('div');
                              textDiv.textContent = msg.message;
                              messageContentDiv.appendChild(textDiv);
                         }
-                        break;
+                        break; 
                 }
 
                 messageDiv.appendChild(messageContentDiv);
@@ -1072,6 +1380,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 messageWrapper.appendChild(messageDiv);
                 chatMessagesContainer.appendChild(messageWrapper);
+            } else { 
+                const existingMessageDiv = document.getElementById(`msg-${msg.id}`);
+                if (existingMessageDiv && (msg.message_type === 'deleted_globally' || msg.message_type === 'deleted_for_user')) {
+                    const contentDiv = existingMessageDiv.querySelector('.message-content');
+                    if (contentDiv) {
+                        let deletedText = '[Mensagem apagada]';
+                        if (msg.message_type === 'deleted_globally') {
+                            deletedText = '[Mensagem apagada para todos]';
+                        }
+                        contentDiv.innerHTML = `<div class="fst-italic text-muted">${deletedText}</div>`;
+                        existingMessageDiv.classList.remove('deleted_globally', 'deleted_for_user');
+                        existingMessageDiv.classList.add(msg.message_type);
+                    }
+                    existingMessageDiv.querySelector('.message-actions')?.remove(); 
+                }
             }
         });
 
@@ -1133,12 +1456,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 bar.style.height = `${Math.random() * 80 + 10}%`;
                 waveformContainer.appendChild(bar);
             }
-        }
-
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         function updateDurationDisplay() {
@@ -1210,21 +1527,220 @@ document.addEventListener('DOMContentLoaded', function() {
         finally { isFetching = false; }
     }
 
+    async function deleteMessage(messageId, scope) {
+        let confirmMessage = "Tem a certeza que deseja apagar esta mensagem ";
+        confirmMessage += (scope === 'all') ? "para todos?" : "apenas para si?";
+        
+        if (scope === 'all') {
+            confirmMessage += "\nEsta ação não pode ser desfeita.";
+        }
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('message_id', messageId);
+            formData.append('scope', scope);
+
+            const response = await fetch('delete_message.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                const messageElement = document.getElementById(`msg-${messageId}`);
+                if (messageElement) {
+                    messageElement.querySelector('.message-actions')?.remove();
+                    const contentDiv = messageElement.querySelector('.message-content');
+                    if (contentDiv) {
+                        let deletedText = (scope === 'all') ? '[Mensagem apagada para todos]' : '[Mensagem apagada]';
+                        contentDiv.innerHTML = `<div class="fst-italic text-muted">${deletedText}</div>`;
+                        messageElement.classList.add(scope === 'all' ? 'deleted_globally' : 'deleted_for_user');
+                    }
+                }
+                 if (scope === 'all') { fetchNewMessages(); }
+            } else {
+                alert('Erro ao apagar mensagem: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Erro ao apagar mensagem:', error);
+            alert('Erro de rede ao tentar apagar a mensagem.');
+        }
+    }
+
+    // Function to start recording
+    async function startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            audioBlob = null;
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => { // Changed to async to await audioContext.decodeAudioData
+                audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                stream.getTracks().forEach(track => track.stop()); // Stop microphone
+                
+                // Calculate duration for audio preview
+                let duration = 0;
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const arrayBuffer = await audioBlob.arrayBuffer();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    duration = audioBuffer.duration; // in seconds
+                } catch (e) {
+                    console.error("Error decoding audio for duration:", e);
+                }
+
+                // Create audio player
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPreviewArea.innerHTML = `
+                    <div class="d-flex align-items-center gap-2 p-2 bg-light rounded-3 shadow-sm">
+                        <audio controls src="${audioUrl}" class="flex-grow-1"></audio>
+                        <span class="text-muted small">${formatTime(duration)}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="audio-preview-cancel-button">Cancelar Áudio</button>
+                    </div>
+                `;
+                audioPreviewArea.style.display = 'block';
+
+                // Set up cancel button for audio preview
+                document.getElementById('audio-preview-cancel-button').addEventListener('click', resetAudioPreview);
+
+                // Hide recording indicator
+                recordingIndicator.style.display = 'none';
+                clearInterval(recordingTimerInterval);
+
+                // Disable text input and attach button
+                messageInput.disabled = true;
+                if(attachButton) attachButton.disabled = true;
+
+                // Change send button to send audio
+                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>'; // Ensure it's the paper plane icon
+                sendButton.dataset.action = 'send_audio'; // Custom attribute to indicate audio send
+                sendButton.disabled = false; // Enable send button
+            };
+
+            mediaRecorder.start();
+            recordingStartTime = Date.now();
+            recordingTimerInterval = setInterval(updateRecordingTimer, 1000);
+
+            // UI update: hide send button, hide microphone, show recording indicator
+            sendButton.style.display = 'inline-flex'; // Keep send button visible
+            sendButton.innerHTML = '<i class="fas fa-stop"></i>'; // Change send button to stop icon
+            sendButton.dataset.action = 'stop_recording'; // Set action to stop recording
+            audioRecordButton.style.display = 'none'; // Hide record button during recording
+            recordingIndicator.style.display = 'flex';
+            messageInput.disabled = true; // Disable text input during recording
+            if(attachButton) attachButton.disabled = true; // Disable attach button during recording
+
+        } catch (err) {
+            console.error('Erro ao acessar o microfone:', err);
+            alert('Não foi possível acessar o microfone. Verifique as permissões do navegador.');
+            resetRecordingUI();
+        }
+    }
+
+    // Function to stop recording
+    function stopRecording() {
+        console.log("stopRecording called");
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            console.log("mediaRecorder.stop()");
+            mediaRecorder.stop();
+        }
+    }
+
+    // Function to update recording timer
+    function updateRecordingTimer() {
+        const elapsedTime = Date.now() - recordingStartTime;
+        const seconds = Math.floor(elapsedTime / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const displaySeconds = (seconds % 60).toString().padStart(2, '0');
+        const displayMinutes = minutes.toString().padStart(2, '0');
+        recordingTimerSpan.textContent = `${displayMinutes}:${displaySeconds}`;
+    }
+
+    // NEW: Function to reset audio preview area
+    function resetAudioPreview() {
+        audioPreviewArea.innerHTML = '';
+        audioPreviewArea.style.display = 'none';
+        audioBlob = null;
+        messageInput.disabled = false; // Enable text input
+        if(attachButton) attachButton.disabled = false; // Enable attach button
+        sendButton.dataset.action = ''; // Reset send button action
+        sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>'; // Reset send button icon
+        if(audioRecordButton) audioRecordButton.style.display = 'inline-flex'; // MOSTRAR O BOTÃO DE GRAVAR NOVAMENTE
+        messageInput.placeholder = "Digite sua mensagem..."; // Reset placeholder
+    }
+
+    // Function to reset recording UI and state
+    function resetRecordingUI() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop(); // Ensure recorder is stopped
+        }
+        if (mediaRecorder && mediaRecorder.stream) {
+            mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Stop microphone
+        }
+        clearInterval(recordingTimerInterval); // Clear the timer
+        recordingIndicator.style.display = 'none';
+        if(audioRecordButton) audioRecordButton.style.display = 'inline-flex'; // MOSTRAR O BOTÃO DE GRAVAR NOVAMENTE
+        sendButton.style.display = 'inline-flex'; // Show send button
+        sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>'; // Reset send icon
+        sendButton.dataset.action = ''; // Clear custom action
+        messageInput.disabled = false; // Enable text input
+        messageInput.placeholder = "Digite sua mensagem...";
+        audioChunks = [];
+        audioBlob = null; // Clear audioBlob
+        selectedFile = null; // Clear any selected file
+        clearSelectedFile(); // Clear file preview area
+        resetAudioPreview(); // Clear audio preview
+        if (attachButton) attachButton.disabled = false; // Enable attach button
+    }
+
+    // Modify sendMessage to handle audio
     async function sendMessage(event) {
         event.preventDefault();
         if (!activeChatUserId || !messageInput || !sendButton) return;
+    
         const messageText = messageInput.value.trim();
-        if (messageText === '' && !selectedFile) return;
+        const actionType = sendButton.dataset.action; // Get custom action
+    
+        // If the send button is currently acting as a stop button for recording
+        if (actionType === 'stop_recording') {
+            stopRecording(); // Stop the recording
+            return; // Do not proceed with sending yet
+        }
+    
+        if (messageText === '' && !selectedFile && !audioBlob) return;
 
         messageInput.disabled = true; sendButton.disabled = true;
         if(attachButton) attachButton.disabled = true;
+        if(audioRecordButton) audioRecordButton.disabled = true; // Disable audio record button
         sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
         const formData = new FormData();
         formData.append('receiver_id', activeChatUserId);
         formData.append('message', messageText);
-        if (selectedFile) {
+
+        if (actionType === 'send_audio' && audioBlob) { // This branch is for sending the *recorded* audio
+            // Calculate duration for audio
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            const duration = audioBuffer.duration; // in seconds
+
+            formData.append('chat_file', audioBlob, `audio_message_${Date.now()}.webm`);
+            formData.append('message_type', 'audio');
+            formData.append('duration', Math.round(duration)); // Send duration to backend
+        } else if (selectedFile) { // This branch is for sending an attached file (image/video)
             formData.append('chat_file', selectedFile, selectedFile.name);
+            // message_type will be determined by file type in send_message.php
+        } else {
+            formData.append('message_type', 'text');
         }
 
         try {
@@ -1232,7 +1748,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             if (data.status === 'success') {
                 messageInput.value = '';
-                clearSelectedFile();
+                clearSelectedFile(); // Clears selectedFile and resets preview area
+                resetRecordingUI(); // Reset UI after sending audio
                 await fetchNewMessages();
                 scrollToBottom();
             } else {
@@ -1244,8 +1761,10 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Erro de rede. Tente novamente.');
         } finally {
             messageInput.disabled = false; sendButton.disabled = false;
-            if(attachButton) attachButton.disabled = false;
+            if(attachButton) attachButton.disabled = false; // Re-enable attach button
+            if(audioRecordButton) audioRecordButton.disabled = false; // Enable audio record button
             sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            sendButton.dataset.action = '';
             messageInput.focus();
         }
     }
@@ -1438,6 +1957,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Event listener para os botões de apagar (delegação de evento)
+    if (chatMessagesContainer) {
+        chatMessagesContainer.addEventListener('click', function(event) {
+            const deleteBtn = event.target.closest('.delete-message-btn');
+            if (deleteBtn) {
+                const messageId = deleteBtn.dataset.messageId;
+                const scope = deleteBtn.dataset.scope;
+                if (messageId && scope) {
+                    deleteMessage(messageId, scope);
+                }
+            }
+        });
+    }
+
+    // NEW: Adicionar evento de clique à foto de perfil no cabeçalho do chat
+    const chatHeaderAvatar = document.querySelector('.chat-header .avatar');
+    if (chatHeaderAvatar) {
+        chatHeaderAvatar.style.cursor = 'pointer'; // Indica que é clicável
+        chatHeaderAvatar.addEventListener('click', function() {
+            const avatarSrc = this.src;
+            const avatarAlt = this.alt; // Usa o alt como nome do ficheiro para download
+            openMediaModal('image', avatarSrc, avatarAlt);
+        });
+    }
+    // Event Listeners for audio recording
+    if (audioRecordButton) {
+        audioRecordButton.addEventListener('mousedown', startRecording); // Re-adicionado para iniciar gravação com clique
+        // O stop é agora gerido pelo sendButton quando o data-action é 'stop_recording'
+        audioRecordButton.addEventListener('touchstart', startRecording);
+        audioRecordButton.addEventListener('touchend', stopRecording);
+    }
+
+    // Event Listener for cancel recording button
+    if (cancelRecordingButton) {
+        cancelRecordingButton.addEventListener('click', resetRecordingUI);
+    }
 });
 </script>
 

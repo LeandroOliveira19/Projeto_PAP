@@ -24,26 +24,66 @@ $bmi = null;        // Inicializa IMC
 $bmi_category = 'N/D'; // Categoria do IMC
 $bmi_category_class = 'text-muted'; // Classe CSS para a categoria
 $bmi_gauge_data = null; // Inicializa dados do gráfico gauge
+$client_id = null; // Para guardar o ID do cliente da tabela 'clients'
 
 try {
-    // Busca todos os dados necessários numa única query
+    // Passo 1: Obter o client_id da tabela clients usando o user_id da sessão
+    $stmt_get_client_id = $pdo->prepare("SELECT id FROM clients WHERE user_id = ? LIMIT 1");
+    $stmt_get_client_id->execute([$user_id]);
+    $client_id_result = $stmt_get_client_id->fetchColumn();
+
+    if (!$client_id_result) {
+        throw new Exception("Registo de cliente não encontrado para o utilizador.");
+    }
+    $client_id = $client_id_result; // Armazena o client_id
+
+    // Passo 2: Buscar dados do utilizador e os dados da ÚLTIMA avaliação
     $stmt = $pdo->prepare("
         SELECT
-            u.name, u.email, u.profile_picture, -- Dados básicos
-            c.height, c.weight, c.activity_level,
-            c.water_percentage, c.visceral_fat_index, c.bone_mass_kg,
-            c.lean_mass_kg, c.muscle_mass_kg, c.fat_mass_kg,
-            c.fat_mass_percentage, c.lean_mass_percentage, c.last_assessment_date
+            u.name, u.email, u.profile_picture, -- Dados básicos do user
+            c.activity_level, -- Dados específicos do cliente da tabela 'clients'
+            
+            -- Dados da última avaliação (da subquery 'latest_assessment')
+            latest_assessment.assessment_date as last_assessment_date,
+            latest_assessment.height, 
+            latest_assessment.weight,
+            latest_assessment.water_percentage, 
+            latest_assessment.visceral_fat_index, 
+            latest_assessment.bone_mass_kg,
+            latest_assessment.lean_mass_kg, 
+            latest_assessment.muscle_mass_kg, 
+            latest_assessment.fat_mass_kg,
+            latest_assessment.fat_mass_percentage, 
+            latest_assessment.lean_mass_percentage
+            -- Adicione aqui quaisquer outras colunas da tabela history_assessments que queira usar
+            -- Ex: latest_assessment.gordura_subcutanea, latest_assessment.idade_metabolica, etc.
+
         FROM users u
-        LEFT JOIN clients c ON u.id = c.user_id
-        WHERE u.id = ?
+        JOIN clients c ON u.id = c.user_id -- JOIN porque o registo em 'clients' é esperado
+        LEFT JOIN (
+            -- Subquery para encontrar a avaliação mais recente deste cliente
+            SELECT ha.*
+            FROM history_assessments ha
+            WHERE ha.client_id = :client_id_for_subquery -- Usa o client_id obtido no Passo 1
+            ORDER BY ha.assessment_date DESC, ha.id DESC -- Ordena pela data mais recente, depois ID
+            LIMIT 1 -- Pega APENAS a mais recente
+        ) AS latest_assessment ON c.id = latest_assessment.client_id -- Condição de JOIN com a subquery
+        WHERE u.id = :user_id AND c.id = :client_id_main_query -- Garante que estamos a buscar para o utilizador e cliente corretos
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([
+        'client_id_for_subquery' => $client_id, // Para a subquery
+        'user_id' => $user_id,                 // Para a query principal
+        'client_id_main_query' => $client_id   // Para a query principal (join com clients)
+    ]);
     $profile_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$profile_data) { throw new Exception("Dados do utilizador não encontrados."); }
+    if (!$profile_data) { 
+        // Esta exceção pode ocorrer se o user_id não tiver um client_id correspondente,
+        // ou se algo correr mal na query. O erro do Passo 1 já deve ter apanhado o caso de client_id em falta.
+        throw new Exception("Dados do perfil ou da última avaliação não encontrados."); 
+    }
 
-    // Calcula o IMC (sem alterações na lógica de cálculo)
+    // Calcula o IMC (usando 'weight' e 'height' da última avaliação)
     $bmi_status = ''; // Status textual original
     if (!empty($profile_data['height']) && $profile_data['height'] > 0 && !empty($profile_data['weight'])) {
         $bmi_height = (float)$profile_data['height'];
@@ -57,7 +97,7 @@ try {
              elseif ($bmi < 30) $bmi_status = "Sobrepeso";
              else $bmi_status = "Obesidade";
 
-             // *** NOVO: Lógica para categoria e classe do GRÁFICO GAUGE ***
+             // Lógica para categoria e classe do GRÁFICO GAUGE
              if ($bmi < 18.5) {
                  $bmi_category = 'Abaixo do Peso';
                  $bmi_category_class = 'text-primary';
@@ -77,20 +117,19 @@ try {
                  $bmi_category = 'Obesidade Grau III';
                  $bmi_category_class = 'text-danger fw-bold';
              }
-             // *** FIM NOVO ***
         }
     }
 
-    // *** Prepara dados para os GRÁFICOS ORIGINAIS (doughnut/bar) ***
-    // *** REVERTIDO: Mantém a estrutura original com 'water' ***
+    // Prepara dados para os GRÁFICOS ORIGINAIS (doughnut/bar)
+    // Estes dados agora vêm da última avaliação
     if (isset($profile_data['fat_mass_percentage']) || isset($profile_data['lean_mass_percentage']) || isset($profile_data['water_percentage']) ||
         isset($profile_data['fat_mass_kg']) || isset($profile_data['lean_mass_kg']) || isset($profile_data['muscle_mass_kg']) || isset($profile_data['bone_mass_kg']))
     {
-        $chart_data = [ // Usa a variável $chart_data original
+        $chart_data = [
             'percentage' => [
                 'fat' => (float)($profile_data['fat_mass_percentage'] ?? 0),
                 'lean' => (float)($profile_data['lean_mass_percentage'] ?? 0),
-                'water' => (float)($profile_data['water_percentage'] ?? 0), // Mantém a água aqui
+                'water' => (float)($profile_data['water_percentage'] ?? 0),
             ],
             'kg' => [
                 'fat' => (float)($profile_data['fat_mass_kg'] ?? 0),
@@ -101,24 +140,23 @@ try {
         ];
     }
 
-    // *** NOVO: Prepara dados para o GRÁFICO GAUGE (apenas se BMI foi calculado) ***
+    // Prepara dados para o GRÁFICO GAUGE (apenas se BMI foi calculado)
     if ($bmi !== null) {
         $bmi_gauge_data = [
-            'values' => [18.5, 6.4, 4.9, 4.9, 4.9, 5.0], // Tamanhos relativos
-            'colors' => ['#3498db', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b'], // Cores
-            'labels' => [ // Labels para a legenda
+            'values' => [18.5, 6.4, 4.9, 4.9, 4.9, 5.0], 
+            'colors' => ['#3498db', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b'],
+            'labels' => [ 
                 'Abaixo do Peso (<18.5)', 'Peso Normal (18.5-24.9)', 'Acima do Peso (25-29.9)',
                 'Obesidade I (30-34.9)', 'Obesidade II (35-39.9)', 'Obesidade III (≥40)'
             ],
-            'current_bmi' => $bmi // Valor atual
+            'current_bmi' => $bmi
         ];
     }
-    // *** FIM NOVO ***
 
 } catch (Exception $e) {
     $page_error = 'Erro ao carregar dados das estatísticas: ' . $e->getMessage();
-    error_log("Error fetching statistics data for user $user_id: " . $e->getMessage());
-    $profile_data = [];
+    error_log("Error fetching statistics data for user $user_id (client_id: $client_id): " . $e->getMessage());
+    $profile_data = []; // Garante que está vazio em caso de erro
     $chart_data = null;
     $bmi_gauge_data = null;
 }
@@ -126,10 +164,14 @@ try {
 // Define active page for sidebar
 $active_page = basename($_SERVER['PHP_SELF']);
 
-// Helper function original
+// Helper function original (sem alterações)
 function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class="text-muted fst-italic">N/D</span>') {
     if (isset($value) && $value !== null && $value !== '') {
-        return htmlspecialchars(number_format((float)$value, $decimals, ',', '.')) . $unit;
+        // Se for numérico e tiver unidade, formata. Senão, apenas htmlspecialchars.
+        if (is_numeric($value) && !empty($unit)) {
+            return htmlspecialchars(number_format((float)$value, $decimals, ',', '.')) . $unit;
+        }
+        return htmlspecialchars($value); // Para valores não numéricos ou sem unidade (ex: nível de atividade)
     }
     return $na_text;
 }
@@ -147,16 +189,14 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
         max-width: 350px; /* Limita largura */
         margin: 1rem auto; /* Centraliza e adiciona margem */
     }
-    /* ***** AJUSTE APLICADO AQUI ***** */
     .bmi-value-display {
         position: absolute;
-        top: 45%; /* Posição vertical (ajuste conforme necessário) */
+        top: 45%; 
         left: 50%;
-        transform: translateX(-50%); /* Apenas centraliza horizontalmente */
+        transform: translateX(-50%); 
         text-align: center;
         width: 100%;
     }
-    /* ***** FIM DO AJUSTE ***** */
     .bmi-value {
         font-size: 2.5rem;
         font-weight: bold;
@@ -169,7 +209,7 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
         display: block;
         margin-top: 0.25rem;
     }
-    .chart-container canvas { /* Garante responsividade dos canvas */
+    .chart-container canvas { 
         max-width: 100%;
         height: auto;
     }
@@ -181,7 +221,13 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
 
     <?php if (!empty($page_error)): ?>
         <div class="alert alert-danger"><?= htmlspecialchars($page_error) ?></div>
-    <?php elseif (empty($profile_data)): ?>
+    <?php elseif (empty($profile_data) && !$client_id): // Erro mais específico se client_id não foi encontrado ?>
+        <div class="alert alert-warning">Não foi possível carregar os dados do perfil do cliente.</div>
+    <?php elseif (empty($profile_data['last_assessment_date']) && $client_id): // Se temos client_id mas não há avaliação ?>
+        <div class="alert alert-info">
+            Ainda não tem uma avaliação física registada. As estatísticas serão preenchidas após a sua primeira avaliação.
+        </div>
+    <?php elseif (empty($profile_data)): // Fallback genérico se $profile_data estiver vazio por outra razão ?>
          <div class="alert alert-warning">Não foi possível carregar os dados do perfil.</div>
     <?php else: ?>
 
@@ -190,35 +236,31 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
             <div class="card-body">
                 <h5 class="card-title mb-4"><i class="fas fa-chart-pie me-2"></i>Resumo Geral</h5>
                 <div class="row">
-                    <div class="col-sm-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Altura:</strong></p> <p class="fs-5"><?= displayStat($profile_data['height'] ?? null, ' m', 2) ?></p> </div>
-                    <div class="col-sm-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Peso Atual:</strong></p> <p class="fs-5"><?= displayStat($profile_data['weight'] ?? null, ' kg', 1) ?></p> </div>
-                    <!-- Exibição textual original do IMC -->
+                    <div class="col-sm-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Altura (última):</strong></p> <p class="fs-5"><?= displayStat($profile_data['height'] ?? null, ' m', 2) ?></p> </div>
+                    <div class="col-sm-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Peso Atual (último):</strong></p> <p class="fs-5"><?= displayStat($profile_data['weight'] ?? null, ' kg', 1) ?></p> </div>
                     <div class="col-sm-6 col-lg-3 mb-3">
-                        <p class="mb-1"><strong>IMC:</strong></p>
+                        <p class="mb-1"><strong>IMC (último):</strong></p>
                         <?php if ($bmi !== null): ?>
                             <p class="fs-5 mb-0"><?= htmlspecialchars($bmi) ?></p>
-                            <small class="text-muted">(<?= htmlspecialchars($bmi_status) // Usa o status textual original ?>)</small>
+                            <small class="text-muted">(<?= htmlspecialchars($bmi_status) ?>)</small>
                         <?php else: ?>
                             <p class="text-muted fst-italic">N/D</p>
                         <?php endif; ?>
                     </div>
-                    <div class="col-sm-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Nível Atividade:</strong></p> <p class="fs-5"><?= !empty($profile_data['activity_level']) ? htmlspecialchars($profile_data['activity_level']) : '<span class="text-muted fst-italic">N/D</span>' ?></p> </div>
+                    <div class="col-sm-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Nível Atividade:</strong></p> <p class="fs-5"><?= displayStat($profile_data['activity_level'] ?? null) ?></p> </div>
                 </div>
             </div>
         </div>
 
-        <!-- *** NOVA SECÇÃO: Gráfico Gauge IMC *** -->
-        <?php if ($bmi_gauge_data): // Só mostra se o IMC foi calculado ?>
-        <!-- ***** ALTERAÇÃO AQUI: Removido justify-content-center ***** -->
+        <!-- NOVA SECÇÃO: Gráfico Gauge IMC -->
+        <?php if ($bmi_gauge_data): ?>
         <div class="row mb-4">
-            <!-- ***** ALTERAÇÃO AQUI: Classe da coluna alterada para col-lg-12 ***** -->
             <div class="col-lg-12">
                  <div class="card shadow-sm h-100">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Visualização do IMC</h5>
+                        <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Visualização do IMC (Baseado na Última Avaliação)</h5>
                     </div>
                     <div class="card-body d-flex flex-column justify-content-center text-center">
-                        <!-- O container do gráfico em si mantém o max-width para não ficar gigante -->
                         <div class="bmi-gauge-container">
                             <canvas id="bmiGaugeChart"></canvas>
                             <div class="bmi-value-display">
@@ -234,17 +276,20 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
                     </div>
                 </div>
             </div>
-            <!-- ***** FIM DAS ALTERAÇÕES ***** -->
         </div>
         <?php endif; ?>
-        <!-- *** FIM NOVA SECÇÃO *** -->
 
 
-        <!-- Secção Composição Corporal (Original) -->
+        <!-- Secção Composição Corporal (Dados da última avaliação) -->
         <div class="card shadow-sm mb-4">
              <div class="card-body">
-                <h5 class="card-title mb-3"><i class="fas fa-percentage me-2"></i>Composição Corporal</h5>
-                <?php if (!empty($profile_data['last_assessment_date'])): ?> <p class="text-muted small mb-3">Última avaliação: <?= htmlspecialchars(date('d/m/Y', strtotime($profile_data['last_assessment_date']))) ?></p> <?php else: ?> <p class="text-muted small mb-3 fst-italic">Nenhuma data de avaliação registada.</p> <?php endif; ?>
+                <h5 class="card-title mb-3"><i class="fas fa-percentage me-2"></i>Composição Corporal (Última Avaliação)</h5>
+                <?php if (!empty($profile_data['last_assessment_date'])): ?> 
+                    <p class="text-muted small mb-3">Data da avaliação: <?= htmlspecialchars(date('d/m/Y', strtotime($profile_data['last_assessment_date']))) ?></p> 
+                <?php else: ?> 
+                    <p class="text-muted small mb-3 fst-italic">Nenhuma avaliação física registada.</p> 
+                <?php endif; ?>
+                
                 <div class="row">
                     <div class="col-md-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Massa Gorda:</strong></p> <p class="fs-5"><?= displayStat($profile_data['fat_mass_kg'] ?? null, ' kg', 2) ?></p> </div>
                     <div class="col-md-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Massa Magra:</strong></p> <p class="fs-5"><?= displayStat($profile_data['lean_mass_kg'] ?? null, ' kg', 2) ?></p> </div>
@@ -254,15 +299,20 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
                     <div class="col-md-6 col-lg-3 mb-3"> <p class="mb-1"><strong>% Massa Magra:</strong></p> <p class="fs-5"><?= displayStat($profile_data['lean_mass_percentage'] ?? null, ' %', 1) ?></p> </div>
                     <div class="col-md-6 col-lg-3 mb-3"> <p class="mb-1"><strong>% Água Corporal:</strong></p> <p class="fs-5"><?= displayStat($profile_data['water_percentage'] ?? null, ' %', 1) ?></p> </div>
                     <div class="col-md-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Gordura Visceral:</strong></p> <p class="fs-5"><?= displayStat($profile_data['visceral_fat_index'] ?? null, '', 0) ?></p> </div>
+                    <!-- Adicione aqui outros campos da avaliação que queira mostrar, usando $profile_data['nome_da_coluna_em_history_assessments'] -->
+                    <!-- Ex:
+                    <div class="col-md-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Gordura Subcutânea:</strong></p> <p class="fs-5"><?= displayStat($profile_data['gordura_subcutanea'] ?? null, ' %', 1) ?></p> </div>
+                    <div class="col-md-6 col-lg-3 mb-3"> <p class="mb-1"><strong>Idade Metabólica:</strong></p> <p class="fs-5"><?= displayStat($profile_data['idade_metabolica'] ?? null, ' anos', 0) ?></p> </div>
+                    -->
                 </div>
             </div>
         </div>
 
-        <!-- Secção Gráficos Originais -->
+        <!-- Secção Gráficos Originais (Dados da última avaliação) -->
         <div class="card shadow-sm">
             <div class="card-body">
-                <h5 class="card-title mb-3"><i class="fas fa-chart-bar me-2"></i>Visualização Gráfica (Composição)</h5>
-                <?php if ($chart_data): // Usa a variável $chart_data original ?>
+                <h5 class="card-title mb-3"><i class="fas fa-chart-bar me-2"></i>Visualização Gráfica (Composição da Última Avaliação)</h5>
+                <?php if ($chart_data): ?>
                     <div class="row">
                         <div class="col-lg-6 mb-4">
                             <div class="chart-container" style="position: relative; height:300px; width:100%">
@@ -276,12 +326,12 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
                         </div>
                     </div>
                 <?php else: ?>
-                    <p class="text-muted fst-italic">Não há dados suficientes de composição corporal para gerar gráficos.</p>
+                    <p class="text-muted fst-italic">Não há dados suficientes de composição corporal da última avaliação para gerar gráficos.</p>
                 <?php endif; ?>
             </div>
         </div>
 
-    <?php endif; // End else for page_error check ?>
+    <?php endif; ?>
 
      <div class="text-center mt-4">
         <a href="dashboard.php" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i>Voltar ao Dashboard</a>
@@ -289,11 +339,141 @@ function displayStat($value, $unit = '', $decimals = 1, $na_text = '<span class=
 
 </main> <!-- Fim .main-content -->
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Script para arrastar, duplo clique e dropdown do ícone de perfil
+    const profileIconContainer = document.querySelector('.profile-icon-container');
+    if (!profileIconContainer) return;
+
+    const profileIconLink = document.getElementById('profileIconLink');
+    const profileDropdown = document.getElementById('profileDropdown');
+
+    let isDragging = false;
+    let dragStarted = false; 
+    let offsetX, offsetY;
+
+    let lastTapTime = 0;
+    const doubleTapDelay = 300; 
+    let tapCount = 0;
+    let tapTimer = null;
+
+    if (profileIconLink && profileDropdown) {
+        profileIconLink.addEventListener('click', function(e) {
+            e.preventDefault(); 
+            if (dragStarted) { dragStarted = false; return; }
+            tapCount++;
+            const currentTime = new Date().getTime();
+            if (tapCount === 1) {
+                lastTapTime = currentTime;
+                tapTimer = setTimeout(function() {
+                    profileDropdown.classList.toggle('show');
+                    tapCount = 0; 
+                }, doubleTapDelay);
+            } else if (tapCount === 2) {
+                if (currentTime - lastTapTime < doubleTapDelay) {
+                    clearTimeout(tapTimer);
+                    window.location.href = profileIconLink.href; 
+                    tapCount = 0; 
+                    lastTapTime = 0; 
+                    profileDropdown.classList.remove('show'); 
+                } else {
+                    tapCount = 1;
+                    lastTapTime = currentTime;
+                    clearTimeout(tapTimer); 
+                    tapTimer = setTimeout(function() {
+                        profileDropdown.classList.toggle('show');
+                        tapCount = 0;
+                    }, doubleTapDelay);
+                }
+            }
+        });
+        document.addEventListener('click', function(event) {
+            if (!profileIconContainer.contains(event.target) && profileDropdown.classList.contains('show')) {
+                profileDropdown.classList.remove('show');
+                tapCount = 0; 
+            }
+        });
+    }
+
+    const savedPosition = localStorage.getItem('profileIconPosition');
+    if (savedPosition) {
+        try {
+            const pos = JSON.parse(savedPosition);
+            profileIconContainer.style.position = 'fixed';
+            profileIconContainer.style.left = pos.left;
+            profileIconContainer.style.top = pos.top;
+            profileIconContainer.style.right = 'auto';
+            profileIconContainer.style.bottom = 'auto';
+        } catch (e) {
+            console.error("Failed to parse saved profile icon position:", e);
+            localStorage.removeItem('profileIconPosition');
+        }
+    }
+
+    function startDrag(e) {
+        if (e.type === 'mousedown' && e.button !== 0) return;
+        if (profileDropdown && profileDropdown.classList.contains('show')) { return; }
+        isDragging = true;
+        dragStarted = false; 
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        const rect = profileIconContainer.getBoundingClientRect();
+        offsetX = clientX - rect.left;
+        offsetY = clientY - rect.top;
+        profileIconContainer.style.position = 'fixed';
+        profileIconContainer.style.right = 'auto';
+        profileIconContainer.style.bottom = 'auto';
+        profileIconContainer.style.zIndex = '1055';
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('touchend', endDrag);
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        if (!dragStarted) {
+            if (profileDropdown && profileDropdown.classList.contains('show')) {
+                profileDropdown.classList.remove('show');
+                tapCount = 0; 
+            }
+        }
+        dragStarted = true;
+        if (e.cancelable) e.preventDefault();
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        let newLeft = clientX - offsetX;
+        let newTop = clientY - offsetY;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const elementWidth = profileIconContainer.offsetWidth;
+        const elementHeight = profileIconContainer.offsetHeight;
+        newLeft = Math.max(0, Math.min(newLeft, viewportWidth - elementWidth));
+        newTop = Math.max(0, Math.min(newTop, viewportHeight - elementHeight));
+        profileIconContainer.style.left = `${newLeft}px`;
+        profileIconContainer.style.top = `${newTop}px`;
+    }
+
+    function endDrag() {
+        if (!isDragging) return;
+        isDragging = false;
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('touchend', endDrag);
+        const finalPosition = { left: profileIconContainer.style.left, top: profileIconContainer.style.top };
+        localStorage.setItem('profileIconPosition', JSON.stringify(finalPosition));
+    }
+    profileIconContainer.addEventListener('mousedown', startDrag, true);
+    profileIconContainer.addEventListener('touchstart', startDrag, { passive: false, capture: true });
+    profileIconContainer.querySelector('a').addEventListener('dragstart', function(e) { e.preventDefault(); });
+});
+</script>
 <!-- Scripts para os Gráficos -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // *** GRÁFICO GAUGE IMC (NOVO) ***
+    // GRÁFICO GAUGE IMC
     const gaugeData = <?= $bmi_gauge_data ? json_encode($bmi_gauge_data) : 'null' ?>;
     const bmiValueGauge = gaugeData ? gaugeData.current_bmi : null;
     const canvasElementGauge = document.getElementById('bmiGaugeChart');
@@ -322,31 +502,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 events: []
             }
         });
-    } else if (canvasElementGauge) {
-        // Opcional: Mostrar mensagem se não houver dados para o gauge
-        // canvasElementGauge.closest('.card-body').innerHTML = '<p class="text-center text-muted fst-italic my-auto">IMC não calculado.</p>';
+    } else if (canvasElementGauge && !gaugeData) { // Se o canvas existe mas não há dados para o gauge
+        const gaugeContainerParent = canvasElementGauge.closest('.card-body');
+        if (gaugeContainerParent) {
+            // Limpa o container do gauge e mostra mensagem
+            const bmiGaugeContainer = gaugeContainerParent.querySelector('.bmi-gauge-container');
+            if (bmiGaugeContainer) bmiGaugeContainer.style.display = 'none'; // Esconde o container do canvas
+            
+            const pElement = document.createElement('p');
+            pElement.className = 'text-center text-muted fst-italic my-auto';
+            pElement.textContent = 'IMC não calculado (dados de peso/altura da última avaliação em falta).';
+            
+            // Encontra o parágrafo de nota existente para inserir antes dele, ou adiciona ao final
+            const existingNote = gaugeContainerParent.querySelector('p.small.text-muted');
+            if (existingNote) {
+                gaugeContainerParent.insertBefore(pElement, existingNote);
+            } else {
+                gaugeContainerParent.appendChild(pElement);
+            }
+        }
     }
-    // *** FIM GRÁFICO GAUGE IMC ***
 
 
-    // *** GRÁFICOS DE COMPOSIÇÃO (Doughnut/Bar) - ATUALIZADO COM CORES ***
+    // GRÁFICOS DE COMPOSIÇÃO (Doughnut/Bar)
     const chartDataOriginal = <?= $chart_data ? json_encode($chart_data) : 'null' ?>;
 
-    // --- Definição de Cores Consistentes ---
-    const colorFat = 'rgba(255, 99, 132, 0.7)'; // Vermelho/Rosa para Gordura
-    const colorLean = 'rgba(75, 192, 192, 0.7)'; // Verde Água para Magra
-    const colorWater = 'rgba(54, 162, 235, 0.7)'; // Azul para Água
-    const colorMuscle = 'rgba(153, 102, 255, 0.7)'; // Roxo para Muscular (usado na barra)
-    const colorBone = 'rgba(201, 203, 207, 0.7)'; // Cinza para Óssea (usado na barra)
-    // Cores das Bordas (mais opacas)
+    const colorFat = 'rgba(255, 99, 132, 0.7)'; 
+    const colorLean = 'rgba(75, 192, 192, 0.7)'; 
+    const colorWater = 'rgba(54, 162, 235, 0.7)'; 
+    const colorMuscle = 'rgba(153, 102, 255, 0.7)'; 
+    const colorBone = 'rgba(201, 203, 207, 0.7)'; 
     const borderFat = colorFat.replace('0.7', '1');
     const borderLean = colorLean.replace('0.7', '1');
     const borderWater = colorWater.replace('0.7', '1');
     const borderMuscle = colorMuscle.replace('0.7', '1');
     const borderBone = colorBone.replace('0.7', '1');
-    // ----------------------------------------
 
-    // Gráfico de Percentagem (Doughnut) - REVERTIDO para dados originais, com cores consistentes
     const ctxPercentage = document.getElementById('compositionPercentageChart');
     if (ctxPercentage && chartDataOriginal && chartDataOriginal.percentage && (chartDataOriginal.percentage.fat > 0 || chartDataOriginal.percentage.lean > 0 || chartDataOriginal.percentage.water > 0)) {
         let existingPercentageChart = Chart.getChart(ctxPercentage);
@@ -355,13 +546,10 @@ document.addEventListener('DOMContentLoaded', function() {
         new Chart(ctxPercentage, {
             type: 'doughnut',
             data: {
-                // REVERTIDO: Labels originais
                 labels: ['% Gordura', '% Magra', '% Água'],
                 datasets: [{
                     label: 'Composição (%)',
-                    // REVERTIDO: Dados originais
                     data: [chartDataOriginal.percentage.fat, chartDataOriginal.percentage.lean, chartDataOriginal.percentage.water],
-                    // ATUALIZADO: Cores consistentes
                     backgroundColor: [colorFat, colorLean, colorWater],
                     borderColor: [borderFat, borderLean, borderWater],
                     borderWidth: 1
@@ -384,18 +572,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     },
-                    legend: { // Mantém legenda para clarificar as cores
-                        display: true,
-                        position: 'bottom'
-                    }
+                    legend: { display: true, position: 'bottom' }
                 }
             }
         });
     } else if(ctxPercentage) {
-        ctxPercentage.closest('.chart-container').innerHTML = '<p class="text-center text-muted fst-italic">Dados de percentagem insuficientes.</p>';
+        ctxPercentage.closest('.chart-container').innerHTML = '<p class="text-center text-muted fst-italic">Dados de percentagem insuficientes da última avaliação.</p>';
     }
 
-    // Gráfico de Massa (Bar) - ATUALIZADO com cores consistentes
     const ctxKg = document.getElementById('compositionKgChart');
     if (ctxKg && chartDataOriginal && chartDataOriginal.kg && (chartDataOriginal.kg.fat > 0 || chartDataOriginal.kg.lean > 0 || chartDataOriginal.kg.muscle > 0 || chartDataOriginal.kg.bone > 0)) {
         let existingKgChart = Chart.getChart(ctxKg);
@@ -404,12 +588,10 @@ document.addEventListener('DOMContentLoaded', function() {
         new Chart(ctxKg, {
             type: 'bar',
             data: {
-                labels: ['Gorda', 'Magra', 'Muscular', 'Óssea'], // Mantém labels originais
+                labels: ['Gorda', 'Magra', 'Muscular', 'Óssea'], 
                 datasets: [{
                     label: 'Massa (kg)',
-                    // Mantém dados originais
                     data: [chartDataOriginal.kg.fat, chartDataOriginal.kg.lean, chartDataOriginal.kg.muscle, chartDataOriginal.kg.bone],
-                    // ATUALIZADO: Cores consistentes na ordem correta
                     backgroundColor: [colorFat, colorLean, colorMuscle, colorBone],
                     borderColor: [borderFat, borderLean, borderMuscle, borderBone],
                     borderWidth: 1
@@ -418,14 +600,14 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                indexAxis: 'y', // Mantém barras horizontais
+                indexAxis: 'y', 
                 scales: {
                     x: { beginAtZero: true, title: { display: true, text: 'Massa (kg)' } },
                     y: { ticks: { autoSkip: false } }
                 },
                 plugins: {
                     title: { display: true, text: 'Composição Corporal (kg)' },
-                    legend: { display: false }, // Legenda não necessária para gráfico de barras com uma série
+                    legend: { display: false }, 
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -442,9 +624,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     } else if(ctxKg) {
-        ctxKg.closest('.chart-container').innerHTML = '<p class="text-center text-muted fst-italic">Dados de massa (kg) insuficientes.</p>';
+        ctxKg.closest('.chart-container').innerHTML = '<p class="text-center text-muted fst-italic">Dados de massa (kg) insuficientes da última avaliação.</p>';
     }
-    // *** FIM GRÁFICOS DE COMPOSIÇÃO ***
 });
 </script>
 

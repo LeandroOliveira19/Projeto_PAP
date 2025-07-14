@@ -1,34 +1,27 @@
 <?php
 // filepath: c:\xampp\htdocs\Projeto_PAP\fetch_messages.php
 session_start();
-include 'db.php'; // Inclui a conexão com o banco de dados
+include 'db.php';
 
-header('Content-Type: application/json'); // Define o tipo de resposta como JSON
+header('Content-Type: application/json');
 
-// Verifica se o usuário está logado
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['status' => 'error', 'message' => 'Não autenticado.', 'messages' => []]);
+    echo json_encode(['status' => 'error', 'message' => 'Não autenticado.']);
     exit;
 }
 
-// Verifica se o ID do outro usuário na conversa foi fornecido via GET
-if (!isset($_GET['other_user_id'])) {
-     echo json_encode(['status' => 'error', 'message' => 'ID do interlocutor não especificado.', 'messages' => []]);
-    exit;
-}
+$current_user_id = $_SESSION['user_id'];
+$other_user_id = filter_var($_GET['other_user_id'] ?? null, FILTER_VALIDATE_INT);
 
-$user_id = $_SESSION['user_id']; // ID do usuário logado
-$other_user_id = filter_var($_GET['other_user_id'], FILTER_VALIDATE_INT); // ID do outro usuário
-
-// Valida o ID do outro usuário
 if (!$other_user_id) {
-    echo json_encode(['status' => 'error', 'message' => 'ID do interlocutor inválido.', 'messages' => []]);
+    echo json_encode(['status' => 'error', 'message' => 'ID do outro utilizador não fornecido.', 'messages' => []]);
     exit;
 }
 
 try {
-    // Prepara a consulta para buscar mensagens entre os dois usuários
-    // *** MODIFICAÇÃO AQUI: Adiciona u_sender.profile_picture ***
+    // Busca mensagens entre current_user_id e other_user_id
+    // Também busca a foto de perfil e nome do remetente para exibição
+    // Filtra mensagens apagadas globalmente ou apagadas para o utilizador atual
     $stmt = $pdo->prepare("
         SELECT
             m.id,
@@ -41,36 +34,42 @@ try {
             m.file_size,
             m.duration,
             m.timestamp,
-            u_sender.name as sender_name,
-            u_sender.profile_picture as sender_avatar -- <<< ADICIONADO AQUI
+            m.globally_deleted_by_user_id,
+            m.globally_deleted_at,
+            s.name AS sender_name,
+            s.profile_picture AS sender_avatar,
+            CASE WHEN dm.message_id IS NOT NULL THEN 1 ELSE 0 END AS is_deleted_for_current_user
         FROM messages m
-        JOIN users u_sender ON m.sender_id = u_sender.id -- Junta para pegar o nome e avatar do remetente
+        JOIN users s ON m.sender_id = s.id
+        LEFT JOIN deleted_messages dm ON m.id = dm.message_id AND dm.user_id = :current_user_id
         WHERE
-            (m.sender_id = :user_id AND m.receiver_id = :other_user_id)
-            OR
-            (m.sender_id = :other_user_id AND m.receiver_id = :user_id)
+            ((m.sender_id = :current_user_id AND m.receiver_id = :other_user_id) OR (m.sender_id = :other_user_id AND m.receiver_id = :current_user_id))
+            AND m.globally_deleted_by_user_id IS NULL -- Exclui mensagens apagadas globalmente
+            AND dm.message_id IS NULL -- Exclui mensagens apagadas apenas para o utilizador atual
         ORDER BY m.timestamp ASC
     ");
-    // **********************************************************
-
-    // Executa a consulta, substituindo os placeholders pelos IDs
     $stmt->execute([
-        'user_id' => $user_id,
+        'current_user_id' => $current_user_id,
+        'other_user_id' => $other_user_id,
+    ]);
+    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Marca mensagens como lidas se o utilizador atual for o recetor
+    $stmt_mark_read = $pdo->prepare("
+        UPDATE messages
+        SET is_read = 1
+        WHERE receiver_id = :current_user_id AND sender_id = :other_user_id AND is_read = 0
+    ");
+    $stmt_mark_read->execute([
+        'current_user_id' => $current_user_id,
         'other_user_id' => $other_user_id
     ]);
 
-    // Busca todas as mensagens encontradas
-    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Opcional: Marcar mensagens como lidas aqui (se implementar a funcionalidade 'is_read')
-    // ...
-
-    // Retorna as mensagens em formato JSON (agora incluindo sender_avatar)
     echo json_encode(['status' => 'success', 'messages' => $messages]);
 
 } catch (PDOException $e) {
-    // Em caso de erro no banco de dados, registra o erro e retorna uma mensagem genérica
-    error_log("Erro ao buscar mensagens (fetch_messages.php): " . $e->getMessage());
-    echo json_encode(['status' => 'error', 'message' => 'Erro interno ao buscar mensagens.', 'messages' => []]);
+    error_log("Erro DB ao buscar mensagens (fetch_messages.php): " . $e->getMessage());
+    echo json_encode(['status' => 'error', 'message' => 'Erro interno ao buscar mensagens.']);
 }
+
 ?>

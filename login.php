@@ -68,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      // error_log("User ID {$user['id']} logged in with SHA256 fallback. Consider rehashing.");
                 }
                 // 3. Fallback para texto puro (MUITO INSEGURO - REMOVER ASSIM QUE POSSÍVEL)
+                // ESTE FALLBACK É ALTAMENTE NÃO RECOMENDADO E DEVE SER REMOVIDO ASSIM QUE POSSÍVEL
                 elseif ($user['password'] === $password) {
                     $is_password_correct = true;
                     // Opcional: Atualizar a senha para o hash mais seguro aqui
@@ -132,93 +133,180 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Health & Wellness</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUFVL" crossorigin="anonymous">
-    <!-- Google Fonts (Poppins - já usado no header, bom para consistência) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<?php include 'header.php'; // Inclui o cabeçalho (que tem o início do body e o ícone de perfil) ?>
 
-    <style>
-        /* Estilos para o corpo da página */
-        body {
-            font-family: 'Poppins', sans-serif; /* Usa a fonte Poppins */
-            background: url('assets/img/login_background.jpg') no-repeat center center fixed; /* Imagem de fundo */
-            background-size: cover; /* Cobre toda a área */
-            display: flex; /* Usa flexbox para centralizar */
-            justify-content: center; /* Centraliza horizontalmente */
-            align-items: center; /* Centraliza verticalmente */
-            min-height: 100vh; /* Altura mínima de 100% da viewport */
-            margin: 0; /* Remove margem padrão */
-            position: relative; /* Necessário para o overlay */
-            color: #333; /* Cor de texto padrão */
-        }
+<style>
+    /* Estilos para o corpo da página (mantidos, com ajuste no overlay) */
+    /* O body já é estilizado pelo header.php ou CSS global, mas podemos sobrepor se necessário */
+    body.login-page { /* Adiciona uma classe específica para evitar conflitos */
+        font-family: 'Poppins', sans-serif;
+        background: url('assets/img/login_background.jpg') no-repeat center center fixed;
+        background-size: cover;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        position: relative;
+        color: var(--bs-body-color, #212529);
+    }
+    body.login-page::before { /* Overlay escuro */
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 1;
+    }
 
-        /* Overlay para escurecer a imagem de fundo e melhorar a legibilidade */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6); /* Overlay preto semi-transparente */
-            z-index: 1; /* Garante que o overlay fica por cima da imagem */
-        }
+    /* Container principal do formulário (Modificado para usar a classe do forgot_password.php) */
+    .forgot-container { /* Usando a classe do forgot_password.php para consistência */
+        position: relative;
+        z-index: 2;
+        background-color: rgba(255, 255, 255, 0.98);
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 450px;
+        animation: fadeInUp 0.5s ease-out;
+    }
 
-        /* Container principal do formulário */
-        .login-container {
-            position: relative; /* Para ficar acima do overlay */
-            z-index: 2; /* Garante que o conteúdo fica por cima do overlay */
-            background-color: rgba(255, 255, 255, 0.95); /* Fundo branco semi-transparente para o formulário */
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); /* Sombra suave */
-            width: 100%;
-            max-width: 400px; /* Largura máxima do formulário */
-        }
+    /* Animação de entrada suave */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-        /* Título */
-        .login-container h2 {
-            margin-bottom: 25px;
-            color: #007bff; /* Cor primária do Bootstrap */
-            font-weight: 600;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <h2 class="text-center">Login</h2>
-                <?php if (!empty($error_message)): // Verifica se a mensagem de erro não está vazia ?>
-                    <div class="alert alert-danger"><?= htmlspecialchars($error_message) // Usa htmlspecialchars por segurança ?></div>
-                <?php endif; ?>
-                <form action="login.php" method="POST">
-                    <div class="form-group mb-3">
-                        <label for="email">E-mail</label>
-                        <input type="email" class="form-control" id="email" name="email" required value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' // Mantém o email preenchido em caso de erro ?>">
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="password">Senha</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Entrar</button>
-                </form>
-                <div class="text-center mt-3">
-                    <p>Esqueceu a password? <a href="forgot_password.php">Recuperar password</a>.</p>
+    /* Título (Modificado para usar a classe do forgot_password.php) */
+    .forgot-container h2 {
+        margin-bottom: 25px;
+        color: var(--bs-primary, #0d6efd);
+        font-weight: 700;
+        text-align: center;
+        font-size: 2rem;
+    }
+
+    /* Estilos dos labels (Modificado) */
+    .forgot-container .form-label { /* Adicionado .forgot-container para especificidade */
+        font-weight: 600;
+        color: var(--bs-emphasis-color, #212529);
+        margin-bottom: 0.5rem;
+    }
+
+    /* Estilos dos inputs (Modificado) */
+    .forgot-container .form-control { /* Adicionado .forgot-container para especificidade */
+        border-radius: 8px;
+        border: 1px solid var(--bs-border-color, #ced4da);
+        padding: 0.85rem 1.2rem;
+        font-size: 1rem;
+        transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .forgot-container .form-control:focus { /* Adicionado .forgot-container para especificidade */
+        border-color: var(--bs-primary-border-subtle, #b9d0ff);
+        box-shadow: 0 0 0 0.25rem var(--bs-primary-bg-subtle, rgba(13, 110, 253, 0.25));
+        outline: 0;
+    }
+
+    /* Estilos do botão (Melhorado) */
+    .forgot-container .btn-primary {
+        padding: 0.9rem;
+        font-weight: 600;
+        border-radius: 8px;
+        background-color: var(--bs-primary, #0d6efd);
+        border-color: var(--bs-primary, #0d6efd);
+        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+
+    .forgot-container .btn-primary:hover {
+        background-color: var(--bs-primary-hover, #0b5ed7);
+        border-color: var(--bs-primary-hover, #0b5ed7);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .forgot-container .btn-primary:active {
+         transform: translateY(0);
+         box-shadow: none;
+    }
+
+    /* Links no rodapé do container (Modificado) */
+    .forgot-container .text-center a {
+        color: var(--bs-link-color, #0d6efd);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    .forgot-container .text-center a:hover {
+        color: var(--bs-link-hover-color, #0a58ca);
+        text-decoration: underline;
+    }
+
+    /* Estilos para a mensagem de alerta (Bootstrap padrão, mas garantindo visibilidade) */
+    .forgot-container .alert {
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+
+    /* Ajustes para modo escuro (se usar a classe .dark-mode no body) */
+    .dark-mode .forgot-container {
+        background-color: rgba(52, 58, 64, 0.98);
+        color: var(--bs-gray-300, #dee2e6);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .dark-mode .forgot-container h2 { color: var(--bs-primary-text-emphasis, #6ea8fe); } /* Ajustado para usar cor de texto de destaque primário */
+    .dark-mode .forgot-container p.text-muted { color: var(--bs-secondary-text-emphasis, #a1a8b0); } /* Ajustado */
+    .dark-mode .forgot-container .form-label { color: var(--bs-body-color, #dee2e6); } /* Ajustado */
+    .dark-mode .forgot-container .form-control {
+        background-color: var(--bs-tertiary-bg, #3A4045); /* Fundo mais sutil */
+        color: var(--bs-body-color, #dee2e6);
+        border-color: var(--bs-border-color-translucent, rgba(255,255,255,0.15)); /* Borda translúcida */
+    }
+    .dark-mode .forgot-container .form-control:focus {
+        border-color: var(--bs-primary, #0d6efd); /* Mantém a cor primária no foco */
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25); /* Usa RGB para sombra */
+    }
+    .dark-mode .forgot-container .btn-primary {
+        background-color: var(--bs-primary, #0d6efd);
+        border-color: var(--bs-primary, #0d6efd);
+        color: var(--bs-light, #f8f9fa); /* Garante texto claro no botão primário */
+    }
+    .dark-mode .forgot-container .btn-primary:hover {
+        background-color: var(--bs-primary-hover, #0b5ed7); /* Cor primária mais escura no hover */
+        border-color: var(--bs-primary-hover, #0b5ed7);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    }
+    .dark-mode .forgot-container .text-center a { color: var(--bs-link-color, #6ea8fe); } /* Ajustado */
+    .dark-mode .forgot-container .text-center a:hover { color: var(--bs-link-hover-color, #8bb9fe); } /* Ajustado */
+
+</style>
+
+<!-- Adiciona a classe ao body para que os estilos específicos da página sejam aplicados -->
+<script>document.body.classList.add('login-page');</script>
+
+<div class="forgot-container"> <!-- Usando a classe do forgot_password.php -->
+    <div class="row justify-content-center">
+        <div class="col-md-12"> <!-- Ajustado para 12 colunas para ocupar a largura máxima do container -->
+            <h2 class="text-center">Login</h2>
+            <?php if (!empty($error_message)): // Verifica se a mensagem de erro não está vazia ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($error_message) // Usa htmlspecialchars por segurança ?></div>
+            <?php endif; ?>
+            <form action="login.php" method="POST">
+                <div class="mb-3"> <!-- Usando mb-3 para espaçamento Bootstrap 5 -->
+                    <label for="email" class="form-label">E-mail</label> <!-- Usando form-label para Bootstrap 5 -->
+                    <input type="email" class="form-control" id="email" name="email" required value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' // Mantém o email preenchido em caso de erro ?>">
                 </div>
+                <div class="mb-3"> <!-- Usando mb-3 para espaçamento Bootstrap 5 -->
+                    <label for="password" class="form-label">Senha</label> <!-- Usando form-label para Bootstrap 5 -->
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Entrar</button>
+            </form>
+            <div class="text-center mt-3">
+                <p>Esqueceu a password? <a href="forgot_password.php">Recuperar password</a>.</p>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Bootstrap Bundle JS (inclui Popper) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigSz/r+8KxI7VNBgh+z" crossorigin="anonymous"></script>
-</body>
-</html>
+<?php include 'footer.php'; // Inclui o rodapé ?>

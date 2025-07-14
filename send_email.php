@@ -22,7 +22,7 @@ function sendConfirmationEmail($to, $name, $token, $type, $temp_password = null)
     // Configurações do email com base no tipo
     if ($type == "register") {
         $subject = "Confirmação de Cadastro - MyWellness";
-        $confirm_link = 'http://localhost/Projeto_PAP/confirm.php?token=' . $token; // Use a variável correta
+        $confirm_link = 'http://mywellness.duckdns.org/Projeto_PAP/confirm.php?token=' . $token; // Use a variável correta
         $message = "
         <html>
         <head>
@@ -47,7 +47,7 @@ function sendConfirmationEmail($to, $name, $token, $type, $temp_password = null)
     } else if ($type == "reset") {
         $subject = "Recuperação de Senha - MyWellness";
         // ***** CORREÇÃO APLICADA AQUI *****
-        $reset_link = 'http://localhost/Projeto_PAP/reset_password.php?token=' . $token;
+        $reset_link = 'http://mywellness.duckdns.org/Projeto_PAP/reset_password.php?token=' . $token;
         // ***********************************
         $message = "
         <html>
@@ -76,7 +76,9 @@ function sendConfirmationEmail($to, $name, $token, $type, $temp_password = null)
 
     } else if ($type == "register_admin") {
         $subject = "Conta Criada - Defina sua Senha - MyWellness";
-        $confirm_link = 'http://localhost/Projeto_PAP/confirm.php?token=' . $token; // Use a variável correta
+        // Links para localhost e servidor (adapte conforme necessário)
+        $confirm_link_localhost = 'http://mywellness.duckdns.org/Projeto_PAP/confirm.php?token=' . $token;
+
         $message = "
         <html>
         <head>
@@ -86,8 +88,8 @@ function sendConfirmationEmail($to, $name, $token, $type, $temp_password = null)
             <h2>Olá, " . htmlspecialchars($name) . "!</h2>
             <p>Uma conta foi criada para você na plataforma MyWellness.</p>
             <p>Sua senha temporária é: <strong>" . htmlspecialchars($temp_password) . "</strong></p>
-            <p>Por favor, clique no link abaixo para confirmar seu cadastro. Após a confirmação, faça login com a senha temporária e será solicitado que defina uma nova senha.</p>
-            <p><a href='" . $confirm_link . "'>" . $confirm_link . "</a></p>
+            <p>Por favor, clique no link correspondente ao seu ambiente para confirmar seu cadastro. Após a confirmação, faça login com a senha temporária e será solicitado que defina uma nova senha:</p>
+            <p><strong>Link:</strong> <a href='" . $confirm_link_localhost . "'>" . $confirm_link_localhost . "</a></p>
             <p>Se você não esperava esta conta, entre em contato com o administrador.</p>
             <br>
             <p>Obrigado,<br>Equipa MyWellness</p>
@@ -97,8 +99,9 @@ function sendConfirmationEmail($to, $name, $token, $type, $temp_password = null)
         $altBody = "Olá, " . htmlspecialchars($name) . "!\n\n";
         $altBody .= "Uma conta foi criada para você na plataforma MyWellness.\n";
         $altBody .= "Sua senha temporária é: " . htmlspecialchars($temp_password) . "\n\n";
-        $altBody .= "Por favor, copie e cole o seguinte link no seu navegador para confirmar seu cadastro:\n";
-        $altBody .= $confirm_link . "\n\n";
+        $altBody .= "Por favor, use o link correspondente ao seu ambiente para confirmar seu cadastro:\n\n";
+        $altBody .= "Link: " . $confirm_link_localhost . "\n\n";
+        $altBody .= "Após a confirmação, faça login com a senha temporária e será solicitado que defina uma nova senha.\n\n";
         $altBody .= "Após a confirmação, faça login com a senha temporária e será solicitado que defina uma nova senha.\n\n";
         $altBody .= "Se você não esperava esta conta, entre em contato com o administrador.\n\n";
         $altBody .= "Obrigado,\nEquipa MyWellness";

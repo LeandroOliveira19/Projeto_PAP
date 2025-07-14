@@ -139,7 +139,7 @@ try {
         <div class="row mb-3">
             <div class="col">
                 <h2 class="h4"><i class="fas fa-users me-2"></i>Meus Clientes</h2>
-                <p class="text-muted">Lista de clientes com planos de treino ativos atribuídos a si.</p>
+                <p style="color: white !important;">Lista de clientes com planos de treino ativos atribuídos a si.</p>
             </div>
         </div>
 

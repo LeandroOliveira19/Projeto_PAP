@@ -47,7 +47,14 @@
                     <span class="align-middle">Gerir Clientes</span>
                 </a>
             </li>
-            <!-- Adicionado para Delegação de Acesso -->
+            
+            <li class="sidebar-item <?= ($active_page === 'sms_admin.php') ? 'active' : ''; ?>">
+                <a href="sms_admin.php" class="sidebar-link">
+                    <i class="fas fa-sms fa-fw"></i>
+                    <span class="align-middle">Notificações SMS</span>
+                </a>
+            </li>
+            
             <li class="sidebar-item <?= ($active_page === 'delegate_access_admin.php' || $active_page === 'my_delegations_admin.php') ? 'active' : ''; ?>">
                 <a class="sidebar-link has-arrow" href="#" data-bs-toggle="collapse" data-bs-target="#delegationSubmenu" aria-expanded="<?= ($active_page === 'delegate_access_admin.php' || $active_page === 'my_delegations_admin.php') ? 'true' : 'false'; ?>" aria-controls="delegationSubmenu">
                     <i class="fas fa-user-cog fa-fw"></i> <span class="align-middle">Delegação de Acesso</span>

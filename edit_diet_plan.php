@@ -56,22 +56,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
-        // 1. Desativar outros planos ativos (se houver) deste cliente por este nutri
-        // Garante que este plano editado será o único ativo no final
-        $stmt_deactivate = $pdo->prepare("UPDATE diet_plans SET is_active = 0 WHERE client_id = ? AND nutritionist_id = ? AND id != ?");
-        $stmt_deactivate->execute([$client_id, $nutritionist_id, $diet_plan_id]);
+        // 1. Desativar o plano antigo que está a ser "editado"
+        $stmt_deactivate_old = $pdo->prepare("UPDATE diet_plans SET is_active = 0 WHERE id = ? AND client_id = ? AND nutritionist_id = ?");
+        $stmt_deactivate_old->execute([$diet_plan_id, $client_id, $nutritionist_id]);
 
-        // 2. Atualizar o plano principal (title, plan_details) e garantir que está ativo
-        // Adicionado 'title' ao UPDATE
-        $stmt_update_plan = $pdo->prepare("UPDATE diet_plans SET title = ?, plan_details = ?, is_active = 1 WHERE id = ? AND client_id = ? AND nutritionist_id = ?");
-        $stmt_update_plan->execute([$plan_title, $plan_details_obs, $diet_plan_id, $client_id, $nutritionist_id]);
+        // 2. Inserir um NOVO plano com os dados do formulário, marcando-o como ativo
+        $stmt_insert_plan = $pdo->prepare("
+            INSERT INTO diet_plans (client_id, nutritionist_id, title, plan_details, is_active, created_at) 
+            VALUES (?, ?, ?, ?, 1, NOW())
+        ");
+        $stmt_insert_plan->execute([$client_id, $nutritionist_id, $plan_title, $plan_details_obs]);
+        $new_diet_plan_id = $pdo->lastInsertId(); // Pega o ID do novo plano
 
-        // 3. Excluir refeições e alimentos existentes para este plano
-        // A exclusão em diet_plan_meals com ON DELETE CASCADE cuidará de diet_plan_meal_foods
-        $stmt_delete_meals = $pdo->prepare("DELETE FROM diet_plan_meals WHERE diet_plan_id = ?");
-        $stmt_delete_meals->execute([$diet_plan_id]);
-
-        // 4. Inserir as novas refeições e alimentos (usando a mesma lógica do add)
+        // 3. Inserir as novas refeições e alimentos no NOVO plano
         $stmt_insert_meal = $pdo->prepare("INSERT INTO diet_plan_meals (diet_plan_id, meal_name, meal_order) VALUES (?, ?, ?)");
         $stmt_insert_food = $pdo->prepare("INSERT INTO diet_plan_meal_foods (diet_plan_meal_id, food_id, quantity, notes) VALUES (?, ?, ?, ?)");
 
@@ -90,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $full_meal_name = trim($day_name) . ' - ' . trim($meal_name);
 
                  // Inserir a refeição na tabela diet_plan_meals
-                 $stmt_insert_meal->execute([$diet_plan_id, $full_meal_name, $global_meal_order]);
+                 $stmt_insert_meal->execute([$new_diet_plan_id, $full_meal_name, $global_meal_order]);
                  $diet_plan_meal_id = $pdo->lastInsertId();
                  $global_meal_order++;
 
@@ -336,11 +333,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const foodRowTemplate = document.getElementById('food-row-template');
     const existingMealsData = <?= $existing_meals_data_json ?>; // Dados existentes do PHP
 
-    // Função para adicionar uma linha de alimento a uma refeição específica
+    // Função para adicionar uma linha de alimento a uma refeição específica (MODIFICADA para aceitar dados)
     function addFoodRow(mealBlock, foodData = {}) { // foodData pode ser vazio ou conter dados existentes
         const foodsList = mealBlock.querySelector('.foods-list');
         const daySection = mealBlock.closest('.day-section');
-        const dayName = daySection.querySelector('.card-header h5').textContent.trim(); // Get "Dia X"
+        const dayName = daySection.dataset.dayName; // Get "Dia X" from data attribute
         const mealName = mealBlock.querySelector('.card-header h6').textContent.trim(); // Get "Pequeno-almoço", etc.
         const foodCounter = foodsList.querySelectorAll('.food-row').length; // Índice baseado nos elementos atuais
 
@@ -353,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
             el.name = el.name.replace('[DAY_NAME]', `[${dayName}]`).replace('[MEAL_NAME]', `[${mealName}]`).replace('[FOOD_INDEX]', `[${foodCounter}]`);
         });
 
-        // Preenche com dados existentes se fornecidos
+        // Preenche com dados existentes se fornecidos (NOVO)
         if (foodData.food_id) {
             const foodSelect = newFoodRow.querySelector('.food-select');
             foodSelect.value = foodData.food_id;
@@ -368,7 +365,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (foodData.notes !== undefined && foodData.notes !== null) {
              newFoodRow.querySelector('.food-notes').value = foodData.notes;
         }
-
 
         // Remove a mensagem "Nenhum alimento..." se existir
         const noFoodsMsg = foodsList.querySelector('.no-foods-message');
@@ -402,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
         daysContainer.querySelectorAll('.meal-block').forEach(mealBlock => {
             const foodsList = mealBlock.querySelector('.foods-list');
             const daySection = mealBlock.closest('.day-section');
-            const dayName = daySection.querySelector('.card-header h5').textContent.trim();
+            const dayName = daySection.dataset.dayName;
             const mealName = mealBlock.querySelector('.card-header h6').textContent.trim();
 
             foodsList.querySelectorAll('.food-row').forEach((foodRow, foodIndex) => {
@@ -426,8 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-
-    // --- Carregar dados existentes ao carregar a página ---
+    // --- NOVO: Carregar dados existentes ao carregar a página ---
     function loadExistingData() {
         if (existingMealsData) {
             // Itera sobre os dias nos dados existentes
@@ -461,7 +456,6 @@ document.addEventListener('DOMContentLoaded', function() {
              reindexFoodsInMeals();
         }
     }
-
     // --- Event Listeners ---
 
     // Event Delegation para botões "Adicionar Alimento" e "Remover Alimento"
@@ -492,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Carregar dados existentes quando a página estiver pronta
-    loadExistingData();
+    loadExistingData(); // Chama a nova função
 
 });
 </script>
